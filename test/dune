@@ -1,2 +1,3 @@
 (test
- (name lis2022))
+ (name lis2022)
+ (libraries lis2022 qcheck))
