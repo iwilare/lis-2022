@@ -1,0 +1,4 @@
+(executable
+ (public_name lis2022)
+ (name main)
+ (libraries lis2022))
