@@ -1,13 +1,13 @@
 open Memory
 open Io_device
 open Register_file
-
+open Ast
 type time = int
 
 type backup =
   | Bottom
-  | Padding           of time
-  | ManagingInterrupt of 
+  | Padding of time
+  | Backup  of 
         register_file (* Register file          *)
       * address       (* Program counter        *)
       * time          (* Remaining padding time *)
@@ -22,12 +22,12 @@ type configuration = {
     b             : backup;
 }
 
-let init_configuration io_device = {
+let init_configuration io_device memory = {
     io_state      = io_device.init_state;
     current_clock = 0;
     arrival_time  = None;
-    m             = memory_init;
-    r             = register_file_init;
+    m             = memory;
+    r             = register_file_init memory;
     pc_old        = 0xFFFE;
     b             = Bottom;
 }
@@ -37,4 +37,3 @@ type mac = {
     write   : bool;
     execute : bool;
 }
-

@@ -9,13 +9,16 @@ type io_event =
   | Interrupt
 
 type transition_type =
-  | EpsilonTransition
-  | InterruptTransition
+  | EpsilonTransition   of io_state
+  | InterruptTransition of io_state
 
 type io_possibilities = {
-   transition_type : transition_type;
-   next_state      : io_state;
-   next_read_state : io_state option;
+   (* Either epsilon or interrupt, one of the two *)  
+   main_transition   : transition_type;
+   (* Output from the device, an input to the CPU *)
+   read_transition   : io_state option;
+   (* Input to the device, a write to the CPU *)
+   write_transitions : word -> io_state option;
 }
 
 type io_device = {

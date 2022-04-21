@@ -1,16 +1,13 @@
-type immediate = string
+type address = int
 
-type address = string
-
-type register_index = R3 | R4 | R5 | R6 | R7 | R8 | R9 | R10 | R11
-
-type register =
-  | PC | SP | SR
-  | R of register_index
+type immediate = int
 
 type byte = int
 
 type word = int
+
+type register =
+  | PC | SP | SR | R3 | R4 | R5 | R6 | R7 | R8 | R9 | R10 | R11
 
 type instr =
   | RETI
