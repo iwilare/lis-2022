@@ -1,7 +1,8 @@
 open Ast
 open Memory
 
-let gie : word = 0b00001000
+let zero : word = 0b00000000
+let gie  : word = 0b00001000
 
 type register_file = {
   pc : word;
@@ -18,33 +19,45 @@ type register_file = {
   r11 : word;
 }
 
-let register_file_get reg_file = function
-  | PC -> reg_file.pc
-  | SP -> reg_file.sp
-  | SR -> reg_file.sr
-  | R3 -> reg_file.r3
-  | R4 -> reg_file.r4
-  | R5 -> reg_file.r5
-  | R6 -> reg_file.r6
-  | R7 -> reg_file.r7
-  | R8 -> reg_file.r8
-  | R9 -> reg_file.r9
-  | R10 -> reg_file.r10
-  | R11 -> reg_file.r11
+let register_get r = function
+  | PC -> r.pc
+  | SP -> r.sp
+  | SR -> r.sr
+  | R3 -> r.r3
+  | R4 -> r.r4
+  | R5 -> r.r5
+  | R6 -> r.r6
+  | R7 -> r.r7
+  | R8 -> r.r8
+  | R9 -> r.r9
+  | R10 -> r.r10
+  | R11 -> r.r11
 
-let register_file_set reg_file v = function
-  | PC -> { reg_file with pc = v }
-  | SP -> { reg_file with sp = v }
-  | SR -> { reg_file with sr = v }
-  | R3 -> { reg_file with r3 = v }
-  | R4 -> { reg_file with r4 = v }
-  | R5 -> { reg_file with r5 = v }
-  | R6 -> { reg_file with r6 = v }
-  | R7 -> { reg_file with r7 = v }
-  | R8 -> { reg_file with r8 = v }
-  | R9 -> { reg_file with r9 = v }
-  | R10 -> { reg_file with r10 = v }
-  | R11 -> { reg_file with r11 = v }
+let align_even x = x land 0xFFFE
+
+let get_bit mask   x = x land mask > 0
+let set_bit mask v x = x lor (if v then mask else zero)
+
+let register_set enc r w = function
+  | PC  -> { r with pc  = align_even w }
+  | SP  -> { r with sp  = align_even w }
+  | SR  ->
+    begin
+      match cpu_mode_of_address enc (register_get r PC) with
+      | Some(PM) ->
+        { r with sr = w |> set_bit gie (get_bit gie (register_get r SR)) }
+      | _ -> (* Remember Some(UM) *)
+        { r with sr = w }
+    end
+  | R3  -> { r with r3  = w }
+  | R4  -> { r with r4  = w }
+  | R5  -> { r with r5  = w }
+  | R6  -> { r with r6  = w }
+  | R7  -> { r with r7  = w }
+  | R8  -> { r with r8  = w }
+  | R9  -> { r with r9  = w }
+  | R10 -> { r with r10 = w }
+  | R11 -> { r with r11 = w }
 
 let register_file_0 =
   {
