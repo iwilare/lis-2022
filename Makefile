@@ -4,10 +4,13 @@ default: fmt
 	$(CC) build
 
 dep:
-	$(CC) install
+	$(CC) build @install
 
 fmt:
 	ocamlformat --inplace **/*.ml
 
 check:
 	$(CC) runtest
+
+checkfmt:
+	$(CC) build @fmt
