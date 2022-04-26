@@ -1,0 +1,23 @@
+
+name: Build and Check sanity code
+
+on:
+  push:
+
+jobs:
+  lint-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          sudo apt install ocaml-nox ocaml opam -y
+          opam init
+          opam install -y dune
+          opam install -y ocamlformat
+          eval $(opam env)
+          opam config exec -- make dep
+          opam config exec -- make checkfmt
+          opam config exec -- make
