@@ -25,10 +25,9 @@ type io_device = {
 let rec advance device (k : int) ((io_state, t, arrival_time) as c) =
   match k with
   | 0 -> c
-  | _ -> begin
+  | _ -> (
       match (device.delta io_state).main_transition with
       | EpsilonTransition d -> advance device (k - 1) (d, t + 1, arrival_time)
-      | InterruptTransition d -> (d, t, Some t)
-      end
+      | InterruptTransition d -> (d, t, Some t))
 
 let get_read_transition dev d = (dev.delta d).read_transition

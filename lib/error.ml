@@ -1,4 +1,1 @@
-type error =
-    | NoIn
-    | NoOut
-    | HaltUM
+type error = NoIn | NoOut | HaltUM
