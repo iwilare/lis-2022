@@ -15,7 +15,7 @@ jobs:
         run: |
           sudo apt install ocaml-nox ocaml opam -y
           opam init
-          opam install -y dune
+          opam install -y dune qcheck
           opam install -y ocamlformat
           eval $(opam env)
           opam config exec -- make dep
