@@ -2,7 +2,7 @@ open Ast
 open Memory
 
 let zero : word = 0b00000000
-let gie  : word = 0b00001000
+let gie : word = 0b00001000
 let flag_v : word = 0b00010000
 let flag_n : word = 0b00100000
 let flag_z : word = 0b01000000
@@ -38,29 +38,27 @@ let register_get r = function
   | R11 -> r.r11
 
 let align_even x = x land 0xFFFE
-
-let get_bit mask   x = x land mask > 0
-let set_bit mask b x = x lor (if b then mask else zero)
+let get_bit mask x = x land mask > 0
+let set_bit mask b x = x lor if b then mask else zero
 
 let register_set enclave regs r w =
   match r with
-  | PC  -> regs.pc <- align_even w
-  | SP  -> regs.sp <- align_even w
-  | SR  ->
-    begin
+  | PC -> regs.pc <- align_even w
+  | SP -> regs.sp <- align_even w
+  | SR -> (
       match cpu_mode_of_address enclave (register_get regs PC) with
-      | Some(PM) ->
-        regs.sr <- w |> set_bit gie (get_bit gie (register_get regs SR))
-      | _ -> (* Remember Some(UM) *)
-        regs.sr <- w
-    end
-  | R3  -> regs.r3  <- w
-  | R4  -> regs.r4  <- w
-  | R5  -> regs.r5  <- w
-  | R6  -> regs.r6  <- w
-  | R7  -> regs.r7  <- w
-  | R8  -> regs.r8  <- w
-  | R9  -> regs.r9  <- w
+      | Some PM ->
+          regs.sr <- w |> set_bit gie (get_bit gie (register_get regs SR))
+      | _ ->
+          (* Remember Some(UM) *)
+          regs.sr <- w)
+  | R3 -> regs.r3 <- w
+  | R4 -> regs.r4 <- w
+  | R5 -> regs.r5 <- w
+  | R6 -> regs.r6 <- w
+  | R7 -> regs.r7 <- w
+  | R8 -> regs.r8 <- w
+  | R9 -> regs.r9 <- w
   | R10 -> regs.r10 <- w
   | R11 -> regs.r11 <- w
 
