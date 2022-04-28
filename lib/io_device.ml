@@ -22,13 +22,13 @@ type io_device = {
   delta : io_state -> io_possibilities;
 }
 
-let rec advance dev (k : int) ((d0, t, ta) as c) =
+let rec advance device (k : int) ((io_state, t, arrival_time) as c) =
   match k with
   | 0 -> c
   | _ -> begin
-      match (dev.delta d0).main_transition with
-      | EpsilonTransition d -> advance dev (k - 1) (d, t + 1, ta)
-      | InterruptTransition d -> (d, t, t)
+      match (device.delta io_state).main_transition with
+      | EpsilonTransition d -> advance device (k - 1) (d, t + 1, arrival_time)
+      | InterruptTransition d -> (d, t, Some t)
       end
 
 let get_read_transition dev d = (dev.delta d).read_transition

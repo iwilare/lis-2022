@@ -3,20 +3,24 @@ open Memory
 
 let zero : word = 0b00000000
 let gie  : word = 0b00001000
+let flag_v : word = 0b00010000
+let flag_n : word = 0b00100000
+let flag_z : word = 0b01000000
+let flag_c : word = 0b10000000
 
 type register_file = {
-  pc : word;
-  sp : word;
-  sr : word;
-  r3 : word;
-  r4 : word;
-  r5 : word;
-  r6 : word;
-  r7 : word;
-  r8 : word;
-  r9 : word;
-  r10 : word;
-  r11 : word;
+  mutable pc : word;
+  mutable sp : word;
+  mutable sr : word;
+  mutable r3 : word;
+  mutable r4 : word;
+  mutable r5 : word;
+  mutable r6 : word;
+  mutable r7 : word;
+  mutable r8 : word;
+  mutable r9 : word;
+  mutable r10 : word;
+  mutable r11 : word;
 }
 
 let register_get r = function
@@ -36,28 +40,29 @@ let register_get r = function
 let align_even x = x land 0xFFFE
 
 let get_bit mask   x = x land mask > 0
-let set_bit mask v x = x lor (if v then mask else zero)
+let set_bit mask b x = x lor (if b then mask else zero)
 
-let register_set enc r w = function
-  | PC  -> { r with pc  = align_even w }
-  | SP  -> { r with sp  = align_even w }
+let register_set enclave regs r w =
+  match r with
+  | PC  -> regs.pc <- align_even w
+  | SP  -> regs.sp <- align_even w
   | SR  ->
     begin
-      match cpu_mode_of_address enc (register_get r PC) with
+      match cpu_mode_of_address enclave (register_get regs PC) with
       | Some(PM) ->
-        { r with sr = w |> set_bit gie (get_bit gie (register_get r SR)) }
+        regs.sr <- w |> set_bit gie (get_bit gie (register_get regs SR))
       | _ -> (* Remember Some(UM) *)
-        { r with sr = w }
+        regs.sr <- w
     end
-  | R3  -> { r with r3  = w }
-  | R4  -> { r with r4  = w }
-  | R5  -> { r with r5  = w }
-  | R6  -> { r with r6  = w }
-  | R7  -> { r with r7  = w }
-  | R8  -> { r with r8  = w }
-  | R9  -> { r with r9  = w }
-  | R10 -> { r with r10 = w }
-  | R11 -> { r with r11 = w }
+  | R3  -> regs.r3  <- w
+  | R4  -> regs.r4  <- w
+  | R5  -> regs.r5  <- w
+  | R6  -> regs.r6  <- w
+  | R7  -> regs.r7  <- w
+  | R8  -> regs.r8  <- w
+  | R9  -> regs.r9  <- w
+  | R10 -> regs.r10 <- w
+  | R11 -> regs.r11 <- w
 
 let register_file_0 =
   {

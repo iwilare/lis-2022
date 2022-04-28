@@ -10,23 +10,24 @@ type instr =
   | HLT
   | IN of register
   | OUT of register
-  | JMP of address
-  | JZ of address
+  | JMP of register
+  | JZ of register
   | MOV of register * register
-  | MOV_LOAD of address * register
-  | MOV_STORE of register * address
-  | MOV_IMM of register * immediate
+  | MOV_LOAD of register * register
+  | MOV_STORE of register * register
+  | MOV_IMM of immediate * register
   | NOT of register
   | ADD of register * register
   | SUB of register * register
   | AND of register * register
   | CMP of register * register
 
-let size = function
-  | MOV_STORE (_, _) -> 2
-  | MOV_IMM (_, _) -> 2
-  | NOT _ -> 2
-  | _ -> 1
+(* Length in bytes *)
+let size : instr -> byte = function
+  | MOV_STORE (_, _) -> 4
+  | MOV_IMM (_, _) -> 4
+  | NOT _ -> 4
+  | _ -> 2
 
 let cycles = function
   | RETI -> 5

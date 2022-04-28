@@ -2,7 +2,11 @@ open Ast
 
 type memory = byte Array.t
 
-let memory_init () = Array.make 65536 0
+let limit = 65536
+
+let is_overflow v = 0 <= v && v < limit
+
+let memory_init () = Array.make limit 0
 let memory_get_byte = Array.get
 let memory_get m a = Array.get m a + (Array.get m (a + 1) lsl 8)
 let memory_set_byte = Array.set
@@ -10,6 +14,8 @@ let memory_set_byte = Array.set
 let memory_set m a v =
   v lsr 8 |> Array.set m a;
   v lsl 8 |> Array.set m (a + 1)
+
+let is_touching_last_word_address addr = addr == limit - 2 || addr == limit - 1
 
 type enclave_range = { enclave_start : address; enclave_end : address }
 
@@ -21,33 +27,40 @@ type enclave_layout = {
   code : enclave_range;
 }
 
-type cpu_mode = PM | UM
-
-let is_in_enclave_code enc addr =
-  enc.code.enclave_start <= addr && addr < enc.code.enclave_end
-
-let is_in_enclave_data enc addr =
-  enc.data.enclave_start <= addr && addr < enc.data.enclave_end
-
-let is_enclave_entry_point enc addr = addr = enc.code.enclave_start
+(* Memory type *)
 
 type memory_type =
   | EnclaveData
   | EnclaveCode of { is_entry_point : bool }
   | Unprotected
 
-let cpu_mode_of_address enc pc =
-  if is_in_enclave_code enc pc then Some PM
-  else if is_in_enclave_data enc pc then None
-  else Some UM
-
-type memory_right = X | R | W
+let is_enclave_code enc addr =
+  enc.code.enclave_start <= addr && addr < enc.code.enclave_end
+let is_enclave_data enc addr =
+  enc.data.enclave_start <= addr && addr < enc.data.enclave_end
+let is_enclave_entry_point enc addr = addr = enc.code.enclave_start
 
 let get_memory_type enc addr =
-  if is_in_enclave_code enc addr then
+  if is_enclave_code enc addr then
     EnclaveCode { is_entry_point = is_enclave_entry_point enc addr }
-  else if is_in_enclave_data enc addr then EnclaveData
-  else Unprotected
+  else if is_enclave_data enc addr then
+    EnclaveData
+  else
+    Unprotected
+
+(* CPU mode *)
+
+type cpu_mode = PM | UM
+
+let cpu_mode_of_address enc pc =
+  match get_memory_type enc pc with
+  | EnclaveCode _ -> Some PM
+  | EnclaveData   -> None
+  | Unprotected   -> Some UM
+
+(* Memory access control *)
+
+type memory_right = X | R | W
 
 let permissions enc f t =
   match (get_memory_type enc f, get_memory_type enc t) with
@@ -60,3 +73,11 @@ let permissions enc f t =
   | _ -> [ R; W; X ]
 
 let mac enc f right t = List.mem right (permissions enc f t)
+
+let mac_word enc f right w =
+     mac enc f right w
+  && mac enc f right (w + 1)
+
+let mac_doubleword enc f right q =
+     mac_word enc f right q
+  && mac_word enc f right (q + 2)

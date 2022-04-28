@@ -9,24 +9,26 @@ type backup =
   | Bottom
   | Padding of time
   | Backup of
-      register_file (* Register file          *)
-      * address (* Program counter        *)
+      register_file (* Register file *)
+      * address (* Program counter *)
       * time (* Remaining padding time *)
 
 type configuration =
   {
-    io_state : io_state;
-    current_clock : time;
-    arrival_time : time option;
+    io_device : io_device;
     m : memory;
     r : register_file;
-    pc_old : address;
-    b : backup;
     enclave : enclave_layout;
+    mutable io_state : io_state;
+    mutable current_clock : time;
+    mutable arrival_time : time option;
+    mutable pc_old : address;
+    mutable b : backup;
   }
 
 let init_configuration enclave io_device memory =
   {
+    io_device = io_device;
     io_state = io_device.init_state;
     current_clock = 0;
     arrival_time = None;
@@ -37,43 +39,62 @@ let init_configuration enclave io_device memory =
     enclave;
   }
 
-let cpu_mode = function
-  | None -> Some UM
-  | Some(c) -> cpu_mode_of_address c.enclave (register_get c.r PC)
+let exc_configuration c =
+  {
+    c with
+    arrival_time = None;
+    r = { register_file_0 with pc = memory_get c.m 0xFFFE };
+    pc_old = 0xFFFE;
+    b = Bottom
+  }
 
-let config_get_gie c = get_bit gie (register_get c.r SR)
+let cpu_mode c = cpu_mode_of_address c.enclave (register_get c.r PC)
 
-let rec mac_valid (c : configuration option) i =
-  match c with
-  | None -> false
-  | Some(c) ->
-    match c.b with
-    | Backup _
-    | Padding _ ->
-      begin
+let rec mac_valid c i =
+  let rget = register_get c.r in
+  match c.b with
+  | Backup _
+  | Padding _ ->
+    begin
       match i with
       | RETI -> true
-      | _ -> mac_valid (Some {c with b = Bottom}) i
-          && not (config_get_gie c)
-          && not (is_enclave_entry_point c.enclave (register_get c.r PC))
-      end
-    | Bottom ->
-      match i with
-      | NOP
-      | JMP(_)
-      | JZ(_)
-      | MOV(_,_)
-      | SUB(_,_)
-      | AND(_,_)
-      | CMP(_,_) -> mac c.enclave c.pc_old X (register_get c.r PC)
-                 && mac c.enclave c.pc_old X (register_get c.r PC + 1)
+      | _ -> mac_valid {c with b = Bottom} i
+             && not (get_bit gie (rget SR))
+             && not (is_enclave_entry_point c.enclave (rget PC))
+    end
+  | Bottom ->
+    match i with
+    | NOP
+    | AND(_,_)
+    | ADD (_, _)
+    | SUB(_,_)
+    | CMP(_,_)
+    | MOV(_,_)
+    | JMP(_)
+    | JZ(_) -> mac_word c.enclave c.pc_old X (rget PC)
 
-      | RETI -> failwith "Not implemented yet"
-      | HLT -> failwith "Not implemented yet"
-      | IN _ -> failwith "Not implemented yet"
-      | OUT _ -> failwith "Not implemented yet"
-      | MOV_LOAD (_, _) -> failwith "Not implemented yet"
-      | MOV_STORE (_, _) -> failwith "Not implemented yet"
-      | MOV_IMM (_, _) -> failwith "Not implemented yet"
-      | NOT _ -> failwith "Not implemented yet"
-      | ADD (_, _) -> failwith "Not implemented yet"
+    | MOV_IMM (_, _)
+    | NOT _ -> mac_doubleword c.enclave c.pc_old X (rget PC)
+
+    | IN _
+    | OUT _ -> cpu_mode c = Some UM
+               && mac_word c.enclave c.pc_old X (rget PC)
+
+    | MOV_LOAD (r1, _) ->
+      not (is_touching_last_word_address (rget r1))
+      && mac_word c.enclave (rget PC) R (rget r1)
+      && mac_word c.enclave c.pc_old X (rget r1)
+
+    | MOV_STORE (_, r2) ->
+      not (is_touching_last_word_address (rget r2))
+      && mac_doubleword c.enclave c.pc_old X (rget r2)
+      && mac_word c.enclave (rget PC) W (rget r2)
+
+    | RETI ->
+      (* Check all doublewords *)
+      not (is_touching_last_word_address (rget SP))
+      && not (is_touching_last_word_address (rget SP + 2))
+      && mac_word c.enclave c.pc_old X (rget PC)
+      && mac_doubleword c.enclave (rget PC) R (rget SP)
+
+    | HLT -> true (* Should always be executable *)

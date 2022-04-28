@@ -1,8 +1,4 @@
 # Domande
 
-1. Typo? 0xfffe oppure M[0xfffe]? Pagina 15 quarto punto elenco puntato
-
-2. Automa da rivedere:
-    - Read o epsilon?
-    - Determinismo
-    - Write
+1. Pagina 17: prima regola, dovrebbero esserci 4 checks invece che due sul last word?
+2. Regola CMP e SUB: sono davvero identiche?
