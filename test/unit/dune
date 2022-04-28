@@ -1,0 +1,3 @@
+(test
+ (name lis2022)
+ (libraries ounit2))
