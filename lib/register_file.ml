@@ -2,7 +2,7 @@ open Ast
 open Memory
 
 let zero : word = 0b00000000
-let gie : word = 0b00001000
+let flag_gie : word = 0b00001000
 let flag_v : word = 0b00010000
 let flag_n : word = 0b00100000
 let flag_z : word = 0b01000000
@@ -21,6 +21,10 @@ type register_file = {
   mutable r9 : word;
   mutable r10 : word;
   mutable r11 : word;
+  mutable r12 : word;
+  mutable r13 : word;
+  mutable r14 : word;
+  mutable r15 : word;
 }
 
 let register_get r = function
@@ -36,6 +40,10 @@ let register_get r = function
   | R9 -> r.r9
   | R10 -> r.r10
   | R11 -> r.r11
+  | R12 -> r.r12
+  | R13 -> r.r13
+  | R14 -> r.r14
+  | R15 -> r.r15
 
 let align_even x = x land 0xFFFE
 let get_bit mask x = x land mask > 0
@@ -46,12 +54,12 @@ let register_set enclave regs r w =
   | PC -> regs.pc <- align_even w
   | SP -> regs.sp <- align_even w
   | SR -> (
-      match cpu_mode_of_address enclave (register_get regs PC) with
-      | Some PM ->
-          regs.sr <- w |> set_bit gie (get_bit gie (register_get regs SR))
-      | _ ->
-          (* Remember Some(UM) *)
-          regs.sr <- w)
+    match cpu_mode_of_address enclave (register_get regs PC) with
+    | Some PM ->
+      regs.sr <- w |> set_bit flag_gie (get_bit flag_gie (register_get regs SR))
+    | _ ->
+      (* Remember Some(UM) *)
+      regs.sr <- w)
   | R3 -> regs.r3 <- w
   | R4 -> regs.r4 <- w
   | R5 -> regs.r5 <- w
@@ -61,8 +69,12 @@ let register_set enclave regs r w =
   | R9 -> regs.r9 <- w
   | R10 -> regs.r10 <- w
   | R11 -> regs.r11 <- w
+  | R12 -> regs.r12 <- w
+  | R13 -> regs.r13 <- w
+  | R14 -> regs.r14 <- w
+  | R15 -> regs.r15 <- w
 
-let register_file_0 =
+let register_file_0 () =
   {
     pc = 0;
     sp = 0;
@@ -76,13 +88,17 @@ let register_file_0 =
     r9 = 0;
     r10 = 0;
     r11 = 0;
+    r12 = 0;
+    r13 = 0;
+    r14 = 0;
+    r15 = 0;
   }
 
-let register_file_init m =
+let register_file_init m () =
   {
     pc = memory_get m 0xFFFE;
     sp = 0;
-    sr = gie;
+    sr = flag_gie;
     r3 = 0;
     r4 = 0;
     r5 = 0;
@@ -92,4 +108,8 @@ let register_file_init m =
     r9 = 0;
     r10 = 0;
     r11 = 0;
+    r12 = 0;
+    r13 = 0;
+    r14 = 0;
+    r15 = 0;
   }
