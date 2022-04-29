@@ -52,37 +52,37 @@ let rec mac_valid c i =
   let rget = register_get c.r in
   match c.b with
   | Some _ -> (
-    match i with
-    | RETI -> true
-    | _ ->
-      mac_valid { c with b = None } i
-      && (not (get_bit flag_gie (rget SR)))
-      && not (is_enclave_entry_point c.enclave (rget PC)))
+      match i with
+      | RETI -> true
+      | _ ->
+          mac_valid { c with b = None } i
+          && (not (get_bit flag_gie (rget SR)))
+          && not (is_enclave_entry_point c.enclave (rget PC)))
   | None -> (
-    match i with
-    | NOP
-    | AND (_, _)
-    | ADD (_, _)
-    | SUB (_, _)
-    | CMP (_, _)
-    | MOV (_, _)
-    | JMP _ | JZ _ ->
-      mac_word c.enclave c.pc_old X (rget PC)
-    | MOV_IMM (_, _) | NOT _ -> mac_doubleword c.enclave c.pc_old X (rget PC)
-    | IN _ | OUT _ ->
-      cpu_mode c = Some UM && mac_word c.enclave c.pc_old X (rget PC)
-    | MOV_LOAD (r1, _) ->
-      (not (is_touching_last_word_address (rget r1)))
-      && mac_word c.enclave (rget PC) R (rget r1)
-      && mac_word c.enclave c.pc_old X (rget r1)
-    | MOV_STORE (_, r2) ->
-      (not (is_touching_last_word_address (rget r2)))
-      && mac_doubleword c.enclave c.pc_old X (rget r2)
-      && mac_word c.enclave (rget PC) W (rget r2)
-    | RETI ->
-      (* Check all doublewords *)
-      (not (is_touching_last_word_address (rget SP)))
-      && (not (is_touching_last_word_address (rget SP + 2)))
-      && mac_word c.enclave c.pc_old X (rget PC)
-      && mac_doubleword c.enclave (rget PC) R (rget SP)
-    | HLT -> true (* Should always be executable *))
+      match i with
+      | NOP
+      | AND (_, _)
+      | ADD (_, _)
+      | SUB (_, _)
+      | CMP (_, _)
+      | MOV (_, _)
+      | JMP _ | JZ _ ->
+          mac_word c.enclave c.pc_old X (rget PC)
+      | MOV_IMM (_, _) | NOT _ -> mac_doubleword c.enclave c.pc_old X (rget PC)
+      | IN _ | OUT _ ->
+          cpu_mode c = Some UM && mac_word c.enclave c.pc_old X (rget PC)
+      | MOV_LOAD (r1, _) ->
+          (not (is_touching_last_word_address (rget r1)))
+          && mac_word c.enclave (rget PC) R (rget r1)
+          && mac_word c.enclave c.pc_old X (rget r1)
+      | MOV_STORE (_, r2) ->
+          (not (is_touching_last_word_address (rget r2)))
+          && mac_doubleword c.enclave c.pc_old X (rget r2)
+          && mac_word c.enclave (rget PC) W (rget r2)
+      | RETI ->
+          (* Check all doublewords *)
+          (not (is_touching_last_word_address (rget SP)))
+          && (not (is_touching_last_word_address (rget SP + 2)))
+          && mac_word c.enclave c.pc_old X (rget PC)
+          && mac_doubleword c.enclave (rget PC) R (rget SP)
+      | HLT -> true (* Should always be executable *))

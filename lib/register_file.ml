@@ -54,12 +54,13 @@ let register_set enclave regs r w =
   | PC -> regs.pc <- align_even w
   | SP -> regs.sp <- align_even w
   | SR -> (
-    match cpu_mode_of_address enclave (register_get regs PC) with
-    | Some PM ->
-      regs.sr <- w |> set_bit flag_gie (get_bit flag_gie (register_get regs SR))
-    | _ ->
-      (* Remember Some(UM) *)
-      regs.sr <- w)
+      match cpu_mode_of_address enclave (register_get regs PC) with
+      | Some PM ->
+          regs.sr <-
+            w |> set_bit flag_gie (get_bit flag_gie (register_get regs SR))
+      | _ ->
+          (* Remember Some(UM) *)
+          regs.sr <- w)
   | R3 -> regs.r3 <- w
   | R4 -> regs.r4 <- w
   | R5 -> regs.r5 <- w
