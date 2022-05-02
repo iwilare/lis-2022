@@ -5,9 +5,7 @@ open Configuration
 open Io_device
 open Halt_error
 
-let interrupt_logic _ = ()
-
-let advance_configuration k c =
+let advance_device k c =
   let io_state, current_clock, arrival_time =
     advance c.io_device k (c.io_state, c.current_clock, c.arrival_time)
   in
@@ -15,25 +13,57 @@ let advance_configuration k c =
   c.current_clock <- current_clock;
   c.arrival_time <- arrival_time
 
+let interrupt_logic c =
+    let pure = Result.ok () in
+    let halt = Result.error in
+    let rget = register_get c.r in
+    let rset = register_set c.enclave c.r in
+    let mset = memory_set c.m in
+    if not (c.manage_interrupts) then
+        pure
+    else
+        (match c.arrival_time with
+        | Some ta when flag_gie c ->
+            (match cpu_mode c with
+            | None -> halt ExecutingEnclaveData
+            | Some UM ->
+                (* Push PC and SR in memory *)
+                mset (rget SP - 2) @@ rget PC;
+                mset (rget SP - 4) @@ rget SR;
+                (* Jump to the ISR *)
+                rset PC c.isr;
+                rset SR 0;
+                rset SP (rget SP - 4);
+                advance_device (2 * cycles_per_access) c;
+                pure
+            | Some PM ->
+                let t_pad = c.current_clock - ta in
+                let k = max_cycles - t_pad in
+                c.b <- Some { r = c.r; t_pad; pc_old = c.pc_old };
+                c.r <- register_file_0 ();
+                c.r.pc <- c.isr;
+                advance_device (6 + k) c;
+                pure)
+        | _ -> pure)
+
+
 let execute_instruction_semantics i c : (unit, halt_error) result =
   let pure = Result.ok () in
   let halt = Result.error in
   let epilogue =
-    advance_configuration (cycles i) c;
-    interrupt_logic c;
-    pure
+    advance_device (cycles i) c;
+    interrupt_logic c
   in
   let mset = memory_set c.m in
   let mget = memory_get c.m in
   let rget = register_get c.r in
   let rset = register_set c.enclave c.r in
-  let rget_bit r mask = get_bit mask (rget r) in
   let rset_bit r mask v = rset r @@ set_bit mask v (rget r) in
   let set_status_register_flags v =
-    rset_bit SR flag_n (v < 0);
-    rset_bit SR flag_z (v == 0);
-    rset_bit SR flag_c (v <> 0);
-    rset_bit SR flag_v (is_overflow v)
+    rset_bit SR mask_n (v < 0);
+    rset_bit SR mask_z (v == 0);
+    rset_bit SR mask_c (v <> 0);
+    rset_bit SR mask_v (is_overflow v)
   in
   match i with
   | HLT -> (
@@ -44,43 +74,38 @@ let execute_instruction_semantics i c : (unit, halt_error) result =
           raise_exception (cycles i) c;
           pure)
   | IN r -> (
-      match (get_io_device_possibilities c).read_transition with
+      match (io_device_choices c).read_transition with
       | None -> halt NoIn
       | Some (w, d') ->
           rset r @@ w;
           c.io_state <- d';
-          advance_configuration (cycles i - 1) c;
+          advance_device (cycles i - 1) c;
           (* Advance must do one cycle less *)
-          interrupt_logic c;
-          pure)
+          interrupt_logic c)
   | OUT r -> (
-      match (get_io_device_possibilities c).write_transitions (rget r) with
+      match (io_device_choices c).write_transitions (rget r) with
       | None -> halt NoOut
       | Some d' ->
           c.io_state <- d';
-          advance_configuration (cycles i - 1) c;
+          advance_device (cycles i - 1) c;
           (* Advance must do one cycle less *)
-          interrupt_logic c;
-          pure)
+          interrupt_logic c)
   | RETI -> (
       match c.b with
       | Some b -> (
-          advance_configuration (cycles i) c;
+          advance_device (cycles i) c;
           match c.arrival_time with
-          | Some _ when get_bit flag_gie c.r.sr ->
+          | Some _ when flag_gie c ->
               (* CPU-Reti-Chain *)
-              interrupt_logic c;
-              (* Necessarily the pending protected case! Because ta'!=\bot && b!=\bot *)
-              pure
+              interrupt_logic c (* Necessarily the pending protected case! Because ta'!=\bot && b!=\bot *)
           | _ ->
               (* CPU-Reti-PrePad *)
+              c.b <- None;
               c.r <- b.r;
               c.pc_old <- b.pc_old;
               (* CPU-Reti-Pad *)
-              c.b <- None;
-              advance_configuration b.t_pad c;
-              interrupt_logic c;
-              pure)
+              advance_device b.t_pad c;
+              interrupt_logic c)
       | None ->
           (* CPU-Reti *)
           (* No backup is found; we are in unprotected mode *)
@@ -92,7 +117,7 @@ let execute_instruction_semantics i c : (unit, halt_error) result =
           (* Restore SR *)
           rset SP @@ (rget SP + 4);
           (* Clean up the stack *)
-          advance_configuration (cycles i) c;
+          advance_device (cycles i) c;
           (* NO INTERRUPT LOGIC HERE! *)
           pure)
   | MOV_LOAD (r1, r2) ->
@@ -114,7 +139,7 @@ let execute_instruction_semantics i c : (unit, halt_error) result =
       epilogue
   | NOP -> epilogue
   | JZ r ->
-      if rget_bit r flag_z then rset PC @@ rget r
+      if flag_z c then rset PC @@ rget r
         (* Else: next instruction is the following one *);
       epilogue
   | JMP r ->

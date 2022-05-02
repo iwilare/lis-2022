@@ -63,3 +63,5 @@ let cycles = function
   | SUB (_, _) -> 1
   | AND (_, _) -> 1
   | CMP (_, _) -> 1
+
+let max_cycles = 6

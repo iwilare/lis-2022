@@ -13,6 +13,8 @@ let memory_set m a v =
   v lsr 8 |> Array.set m a;
   v lsl 8 |> Array.set m (a + 1)
 
+let cycles_per_access = 3 (* TODO: check if this is consistent with interrupt logic in UM case *)
+
 let is_touching_last_word_address addr = addr == limit - 2 || addr == limit - 1
 
 type enclave_range = { enclave_start : address; enclave_end : address }
