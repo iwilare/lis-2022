@@ -55,9 +55,7 @@ let register_set enclave regs r w =
   | SP -> regs.sp <- align_even w
   | SR -> (
       match cpu_mode_of_address enclave regs.pc with
-      | Some PM ->
-          regs.sr <-
-            w |> set_bit mask_gie (get_bit mask_gie regs.sr)
+      | Some PM -> regs.sr <- w |> set_bit mask_gie (get_bit mask_gie regs.sr)
       | _ ->
           (* Remember Some(UM) *)
           regs.sr <- w)

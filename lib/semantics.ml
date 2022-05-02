@@ -14,38 +14,36 @@ let advance_device k c =
   c.arrival_time <- arrival_time
 
 let interrupt_logic c =
-    let pure = Result.ok () in
-    let halt = Result.error in
-    let rget = register_get c.r in
-    let rset = register_set c.enclave c.r in
-    let mset = memory_set c.m in
-    if not (c.manage_interrupts) then
-        pure
-    else
-        (match c.arrival_time with
-        | Some ta when flag_gie c ->
-            (match cpu_mode c with
-            | None -> halt ExecutingEnclaveData
-            | Some UM ->
-                (* Push PC and SR in memory *)
-                mset (rget SP - 2) @@ rget PC;
-                mset (rget SP - 4) @@ rget SR;
-                (* Jump to the ISR *)
-                rset PC c.isr;
-                rset SR 0;
-                rset SP (rget SP - 4);
-                advance_device (2 * cycles_per_access) c;
-                pure
-            | Some PM ->
-                let t_pad = c.current_clock - ta in
-                let k = max_cycles - t_pad in
-                c.b <- Some { r = c.r; t_pad; pc_old = c.pc_old };
-                c.r <- register_file_0 ();
-                c.r.pc <- c.isr;
-                advance_device (6 + k) c;
-                pure)
-        | _ -> pure)
-
+  let pure = Result.ok () in
+  let halt = Result.error in
+  let rget = register_get c.r in
+  let rset = register_set c.enclave c.r in
+  let mset = memory_set c.m in
+  if not c.manage_interrupts then pure
+  else
+    match c.arrival_time with
+    | Some ta when flag_gie c -> (
+        match cpu_mode c with
+        | None -> halt ExecutingEnclaveData
+        | Some UM ->
+            (* Push PC and SR in memory *)
+            mset (rget SP - 2) @@ rget PC;
+            mset (rget SP - 4) @@ rget SR;
+            (* Jump to the ISR *)
+            rset PC c.isr;
+            rset SR 0;
+            rset SP (rget SP - 4);
+            advance_device (2 * cycles_per_access) c;
+            pure
+        | Some PM ->
+            let t_pad = c.current_clock - ta in
+            let k = max_cycles - t_pad in
+            c.b <- Some { r = c.r; t_pad; pc_old = c.pc_old };
+            c.r <- register_file_0 ();
+            c.r.pc <- c.isr;
+            advance_device (6 + k) c;
+            pure)
+    | _ -> pure
 
 let execute_instruction_semantics i c : (unit, halt_error) result =
   let pure = Result.ok () in
@@ -97,7 +95,8 @@ let execute_instruction_semantics i c : (unit, halt_error) result =
           match c.arrival_time with
           | Some _ when flag_gie c ->
               (* CPU-Reti-Chain *)
-              interrupt_logic c (* Necessarily the pending protected case! Because ta'!=\bot && b!=\bot *)
+              interrupt_logic c
+              (* Necessarily the pending protected case! Because ta'!=\bot && b!=\bot *)
           | _ ->
               (* CPU-Reti-PrePad *)
               c.b <- None;

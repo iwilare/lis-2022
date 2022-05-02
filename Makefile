@@ -13,4 +13,4 @@ check:
 	$(CC) runtest
 
 checkfmt:
-	$(CC) build @fmt
+	$(CC) build @fmt --auto-promote

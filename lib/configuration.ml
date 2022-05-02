@@ -14,22 +14,17 @@ type backup = {
 type configuration = {
   (* High vs low Sancus emulation *)
   manage_interrupts : bool;
-
   (* Memory layout *)
   enclave : enclave_layout;
   isr : address;
-
   (* Global device *)
   io_device : io_device;
-
   (* Timing state *)
   mutable io_state : io_state;
   mutable current_clock : time;
   mutable arrival_time : time option;
-
   (* Old program counter state *)
   mutable pc_old : address;
-
   (* Main state of the CPU *)
   mutable m : memory;
   mutable r : register_file;
@@ -37,18 +32,15 @@ type configuration = {
 }
 
 let init_configuration manage_interrupts enclave io_device memory isr () =
-{
+  {
     manage_interrupts;
     isr;
     io_device;
     enclave;
-
     io_state = io_device.init_state;
     current_clock = 0;
     arrival_time = None;
-
     pc_old = 0xFFFE;
-
     m = memory;
     r = register_file_init memory ();
     b = None;
@@ -64,9 +56,7 @@ let raise_exception extra_cycles c =
   c.r.pc <- memory_get c.m 0xFFFE
 
 let cpu_mode c = cpu_mode_of_address c.enclave c.r.pc
-
 let io_device_choices c = c.io_device.delta c.io_state
-
 let flag_gie c = get_bit mask_gie c.r.sr
 let flag_z c = get_bit mask_z c.r.sr
 
@@ -76,13 +66,11 @@ let rec mac_valid c i =
   let pc = c.r.pc in
   let sp = c.r.sp in
   match c.b with
-  | Some _ -> (
-      match i with
+  | Some _ ->
+      (match i with
       | RETI -> true
-      | _ ->
-          mac_valid { c with b = None } i
-          && not (flag_gie c))
-          && not (is_enclave_entry_point c.enclave pc)
+      | _ -> mac_valid { c with b = None } i && not (flag_gie c))
+      && not (is_enclave_entry_point c.enclave pc)
   | None -> (
       match i with
       | NOP
@@ -94,8 +82,7 @@ let rec mac_valid c i =
       | JMP _ | JZ _ ->
           mac_word c.enclave pc_old X pc
       | MOV_IMM (_, _) | NOT _ -> mac_doubleword c.enclave pc_old X pc
-      | IN _ | OUT _ ->
-          cpu_mode c = Some UM && mac_word c.enclave pc_old X pc
+      | IN _ | OUT _ -> cpu_mode c = Some UM && mac_word c.enclave pc_old X pc
       | MOV_LOAD (r1, _) ->
           (not (is_touching_last_word_address (rget r1)))
           && mac_word c.enclave pc R (rget r1)
