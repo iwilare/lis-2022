@@ -70,31 +70,22 @@ let rec mac_valid c i =
       (match i with
       | RETI -> true
       | _ -> mac_valid { c with b = None } i && not (flag_gie c))
-      && not (is_enclave_entry_point c.enclave pc)
+           && not (is_enclave_entry_point c.enclave pc)
   | None -> (
-      match i with
-      | NOP
-      | AND (_, _)
-      | ADD (_, _)
-      | SUB (_, _)
-      | CMP (_, _)
-      | MOV (_, _)
-      | JMP _ | JZ _ ->
-          mac_word c.enclave pc_old X pc
-      | MOV_IMM (_, _) | NOT _ -> mac_doubleword c.enclave pc_old X pc
-      | IN _ | OUT _ -> cpu_mode c = Some UM && mac_word c.enclave pc_old X pc
+      (* Check all current instruction bytes *)
+      mac_bytes c.enclave pc_old X pc (size i) &&
+      (match i with
+      | IN _
+      | OUT _ -> cpu_mode c = Some UM
       | MOV_LOAD (r1, _) ->
-          (not (is_touching_last_word_address (rget r1)))
+          not (is_touching_last_word_address (rget r1))
           && mac_word c.enclave pc R (rget r1)
-          && mac_word c.enclave pc_old X (rget r1)
       | MOV_STORE (_, r2) ->
-          (not (is_touching_last_word_address (rget r2)))
-          && mac_doubleword c.enclave pc_old X (rget r2)
+          not (is_touching_last_word_address (rget r2))
           && mac_word c.enclave pc W (rget r2)
       | RETI ->
-          (* Check all doublewords *)
-          (not (is_touching_last_word_address sp))
-          && (not (is_touching_last_word_address (sp + 2)))
-          && mac_word c.enclave pc_old X pc
-          && mac_doubleword c.enclave pc R sp
-      | HLT -> true (* Should always be executable *))
+          not (is_touching_last_word_address sp)
+          && not (is_touching_last_word_address (sp + 2))
+          && mac_word c.enclave pc R sp
+          && mac_word c.enclave pc R (sp + 2) (* Check that we can read PC and SP from the stack *)
+      | _ -> true (* HALT should always be executable *)))

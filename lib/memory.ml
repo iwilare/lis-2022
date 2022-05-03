@@ -74,7 +74,12 @@ let permissions enc f t =
   | _ -> [ R; W; X ]
 
 let mac enc f right t = List.mem right (permissions enc f t)
+
 let mac_word enc f right w = mac enc f right w && mac enc f right (w + 1)
 
-let mac_doubleword enc f right q =
-  mac_word enc f right q && mac_word enc f right (q + 2)
+let rec mac_bytes enc f right t bytes =
+  match bytes with
+  | 0 -> true
+  | _ ->
+    mac enc f right t &&
+    mac_bytes enc f right (t + 1) (bytes - 1)
