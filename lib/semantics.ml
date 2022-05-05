@@ -17,7 +17,7 @@ let interrupt_logic c =
   let pure = Result.ok () in
   let halt = Result.error in
   let rget = register_get c.r in
-  let rset = register_set c.enclave c.r in
+  let rset = register_set c.layout c.r in
   let mset = memory_set c.m in
   if not c.manage_interrupts then pure
   else
@@ -30,7 +30,7 @@ let interrupt_logic c =
             mset (rget SP - 2) @@ rget PC;
             mset (rget SP - 4) @@ rget SR;
             (* Jump to the ISR *)
-            rset PC c.isr;
+            rset PC c.layout.isr;
             rset SR 0;
             rset SP (rget SP - 4);
             advance_device (2 * cycles_per_access) c;
@@ -40,7 +40,7 @@ let interrupt_logic c =
             let k = max_cycles - t_pad in
             c.b <- Some { r = c.r; t_pad; pc_old = c.pc_old };
             c.r <- register_file_0 ();
-            c.r.pc <- c.isr;
+            c.r.pc <- c.layout.isr;
             advance_device (6 + k) c;
             pure)
     | _ -> pure
@@ -55,7 +55,7 @@ let execute_instruction_semantics i c : (unit, halt_error) result =
   let mset = memory_set c.m in
   let mget = memory_get c.m in
   let rget = register_get c.r in
-  let rset = register_set c.enclave c.r in
+  let rset = register_set c.layout c.r in
   let rset_bit r mask v = rset r @@ set_bit mask v (rget r) in
   let set_status_register_flags v =
     rset_bit SR mask_n (v < 0);
@@ -165,7 +165,7 @@ let execute_instruction_semantics i c : (unit, halt_error) result =
 
 let step (c : configuration) (i : instr) : (unit, halt_error) result =
   let rget = register_get c.r in
-  let rset = register_set c.enclave c.r in
+  let rset = register_set c.layout c.r in
   let pure = Result.ok () in
   if not (mac_valid c i) then (
     (* CPU-Violation-PM *)

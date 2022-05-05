@@ -3,15 +3,15 @@ open Ast
 type memory = byte Array.t
 
 let limit = 65536
-let is_overflow v = 0 <= v && v < limit
+let is_overflow v = v < 0 || limit <= v
 let memory_init () = Array.make limit 0
 let memory_get_byte = Array.get
 let memory_get m a = Array.get m a + (Array.get m (a + 1) lsl 8)
 let memory_set_byte = Array.set
 
 let memory_set m a v =
-  v lsr 8 |> Array.set m a;
-  v lsl 8 |> Array.set m (a + 1)
+  v land 255 |> Array.set m a;
+  v lsr 8 |> Array.set m (a + 1)
 
 let cycles_per_access =
   3 (* TODO: check if this is consistent with interrupt logic in UM case *)
@@ -20,12 +20,13 @@ let is_touching_last_word_address addr = addr == limit - 2 || addr == limit - 1
 
 type enclave_range = { enclave_start : address; enclave_end : address }
 
-type enclave_layout = {
+type memory_layout = {
   (* Must be non-overlapping region *)
   (* isr must not be in the enclave. *)
   (* 0xFFFE must be outside the enclave sections and different from isr. *)
   data : enclave_range;
   code : enclave_range;
+  isr : address;
 }
 
 (* Memory type *)
@@ -74,12 +75,9 @@ let permissions enc f t =
   | _ -> [ R; W; X ]
 
 let mac enc f right t = List.mem right (permissions enc f t)
-
 let mac_word enc f right w = mac enc f right w && mac enc f right (w + 1)
 
 let rec mac_bytes enc f right t bytes =
   match bytes with
   | 0 -> true
-  | _ ->
-    mac enc f right t &&
-    mac_bytes enc f right (t + 1) (bytes - 1)
+  | _ -> mac enc f right t && mac_bytes enc f right (t + 1) (bytes - 1)

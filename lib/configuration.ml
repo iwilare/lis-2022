@@ -15,8 +15,7 @@ type configuration = {
   (* High vs low Sancus emulation *)
   manage_interrupts : bool;
   (* Memory layout *)
-  enclave : enclave_layout;
-  isr : address;
+  layout : memory_layout;
   (* Global device *)
   io_device : io_device;
   (* Timing state *)
@@ -31,12 +30,11 @@ type configuration = {
   mutable b : backup option;
 }
 
-let init_configuration manage_interrupts enclave io_device memory isr () =
+let init_configuration manage_interrupts layout io_device memory () =
   {
     manage_interrupts;
-    isr;
     io_device;
-    enclave;
+    layout;
     io_state = io_device.init_state;
     current_clock = 0;
     arrival_time = None;
@@ -55,7 +53,7 @@ let raise_exception extra_cycles c =
   c.r <- register_file_0 ();
   c.r.pc <- memory_get c.m 0xFFFE
 
-let cpu_mode c = cpu_mode_of_address c.enclave c.r.pc
+let cpu_mode c = cpu_mode_of_address c.layout c.r.pc
 let io_device_choices c = c.io_device.delta c.io_state
 let flag_gie c = get_bit mask_gie c.r.sr
 let flag_z c = get_bit mask_z c.r.sr
@@ -70,22 +68,23 @@ let rec mac_valid c i =
       (match i with
       | RETI -> true
       | _ -> mac_valid { c with b = None } i && not (flag_gie c))
-           && not (is_enclave_entry_point c.enclave pc)
+      && not (is_enclave_entry_point c.layout pc)
   | None -> (
       (* Check all current instruction bytes *)
-      mac_bytes c.enclave pc_old X pc (size i) &&
-      (match i with
-      | IN _
-      | OUT _ -> cpu_mode c = Some UM
+      mac_bytes c.layout pc_old X pc (size i)
+      &&
+      match i with
+      | IN _ | OUT _ -> cpu_mode c = Some UM
       | MOV_LOAD (r1, _) ->
-          not (is_touching_last_word_address (rget r1))
-          && mac_word c.enclave pc R (rget r1)
+          (not (is_touching_last_word_address (rget r1)))
+          && mac_word c.layout pc R (rget r1)
       | MOV_STORE (_, r2) ->
-          not (is_touching_last_word_address (rget r2))
-          && mac_word c.enclave pc W (rget r2)
+          (not (is_touching_last_word_address (rget r2)))
+          && mac_word c.layout pc W (rget r2)
       | RETI ->
-          not (is_touching_last_word_address sp)
-          && not (is_touching_last_word_address (sp + 2))
-          && mac_word c.enclave pc R sp
-          && mac_word c.enclave pc R (sp + 2) (* Check that we can read PC and SP from the stack *)
-      | _ -> true (* HALT should always be executable *)))
+          (not (is_touching_last_word_address sp))
+          && (not (is_touching_last_word_address (sp + 2)))
+          && mac_word c.layout pc R sp
+          && mac_word c.layout pc R (sp + 2)
+          (* Check that we can read PC and SP from the stack *)
+      | _ -> true (* HALT should always be executable *))

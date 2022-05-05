@@ -47,14 +47,14 @@ let register_get regs = function
 
 let align_even x = x land 0xFFFE
 let get_bit mask x = x land mask > 0
-let set_bit mask b x = x lor if b then mask else zero
+let set_bit mask b x = if b then x lor mask else x land lnot mask
 
-let register_set enclave regs r w =
+let register_set layout regs r w =
   match r with
   | PC -> regs.pc <- align_even w
   | SP -> regs.sp <- align_even w
   | SR -> (
-      match cpu_mode_of_address enclave regs.pc with
+      match cpu_mode_of_address layout regs.pc with
       | Some PM -> regs.sr <- w |> set_bit mask_gie (get_bit mask_gie regs.sr)
       | _ ->
           (* Remember Some(UM) *)
