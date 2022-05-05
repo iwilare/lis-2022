@@ -13,4 +13,9 @@ check:
 	$(CC) runtest
 
 checkfmt:
-	$(CC) build @fmt --auto-promote
+# linux moment
+
+	$(CC) build @fmt --auto-promote || $(CC) build @fmt --auto-promote 
+
+
+.PHONY: checkfmt
