@@ -133,7 +133,6 @@ let execute_instruction_semantics i c : (unit, halt_error) result =
       epilogue
   | CMP (r1, r2) ->
       let diff = rget r1 - rget r2 in
-      rset r2 diff;
       set_status_register_flags diff;
       epilogue
   | NOP -> epilogue
