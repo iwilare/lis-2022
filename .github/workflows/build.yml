@@ -21,3 +21,4 @@ jobs:
           opam config exec -- make dep
           opam config exec -- make checkfmt
           opam config exec -- make
+          opam config exec -- make check
