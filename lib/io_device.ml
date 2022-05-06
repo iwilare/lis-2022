@@ -22,6 +22,13 @@ type io_device = {
   delta : io_state -> io_possibilities;
 }
 
+(**
+   - device: current device instance
+   - k: TODO
+   - io_state: TODO
+   - t: TODO
+   - arrival_time: TODO
+ *)
 let rec advance device (k : int) ((io_state, t, arrival_time) as c) =
   match k with
   | 0 -> c
