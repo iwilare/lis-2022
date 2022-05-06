@@ -27,6 +27,39 @@ type register_file = {
   mutable r15 : word;
 }
 
+let string_of_register_file_gp r =
+  "[R3: " ^ string_of_word r.r3 ^ "]" ^
+  " [R4: " ^ string_of_word r.r4 ^ "]" ^
+  " [R5: " ^ string_of_word r.r5 ^ "]" ^
+  (*" [R6: " ^ string_of_word r.r6 ^ "]" ^
+  " [R7: " ^ string_of_word r.r7 ^ "]" ^
+  " [R8: " ^ string_of_word r.r8 ^ "]" ^
+  " [R9: " ^ string_of_word r.r9 ^ "]" ^
+  " [R10: " ^ string_of_word r.r10 ^ "]" ^
+  " [R11: " ^ string_of_word r.r11 ^ "]" ^
+  " [R12: " ^ string_of_word r.r12 ^ "]" ^
+  " [R13: " ^ string_of_word r.r13 ^ "]" ^
+  " [R14: " ^ string_of_word r.r14 ^ "]" ^*) " ..." ^
+  " [R15: " ^ string_of_word r.r15 ^ "]"
+
+let string_of_register = function
+  | PC -> "PC"
+  | SP -> "SP"
+  | SR -> "SR"
+  | R3 -> "R3"
+  | R4 -> "R4"
+  | R5 -> "R5"
+  | R6 -> "R6"
+  | R7 -> "R7"
+  | R8 -> "R8"
+  | R9 -> "R9"
+  | R10 -> "R10"
+  | R11 -> "R11"
+  | R12 -> "R12"
+  | R13 -> "R13"
+  | R14 -> "R14"
+  | R15 -> "R15"
+
 let register_get regs = function
   | PC -> regs.pc
   | SP -> regs.sp
@@ -45,9 +78,12 @@ let register_get regs = function
   | R14 -> regs.r14
   | R15 -> regs.r15
 
-let align_even x = x land 0xFFFE
 let get_bit mask x = x land mask > 0
 let set_bit mask b x = if b then x lor mask else x land lnot mask
+
+let string_of_sr_flags sr =
+  let string_of_bool b = if b then "1" else "0" in
+  "GIE=" ^ string_of_bool (get_bit mask_gie sr) ^ " V=" ^ string_of_bool (get_bit mask_v sr) ^ " N=" ^ string_of_bool (get_bit mask_n sr) ^ " Z=" ^ string_of_bool (get_bit mask_z sr) ^ " C=" ^ string_of_bool (get_bit mask_c sr)
 
 let register_set layout regs r w =
   match r with
@@ -72,6 +108,25 @@ let register_set layout regs r w =
   | R13 -> regs.r13 <- w
   | R14 -> regs.r14 <- w
   | R15 -> regs.r15 <- w
+
+let copy_register_file r1 r2 = begin
+  r1.pc <- r2.pc;
+  r1.sp <- r2.sp;
+  r1.sr <- r2.sr;
+  r1.r3 <- r2.r3;
+  r1.r4 <- r2.r4;
+  r1.r5 <- r2.r5;
+  r1.r6 <- r2.r6;
+  r1.r7 <- r2.r7;
+  r1.r8 <- r2.r8;
+  r1.r9 <- r2.r9;
+  r1.r10 <- r2.r10;
+  r1.r11 <- r2.r11;
+  r1.r12 <- r2.r12;
+  r1.r13 <- r2.r13;
+  r1.r14 <- r2.r14;
+  r1.r15 <- r2.r15
+end
 
 let register_file_0 () =
   {

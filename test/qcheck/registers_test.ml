@@ -1,4 +1,5 @@
 open Lis2022.Register_file
+open Lis2022.Memory
 
 let test_align_even =
   let property x =

@@ -5,6 +5,8 @@ open Ast
 
 type time = int
 
+let string_of_time = string_of_int
+
 type backup = {
   r : register_file; (* Register file *)
   pc_old : address; (* Program counter *)
@@ -25,10 +27,23 @@ type configuration = {
   (* Old program counter state *)
   mutable pc_old : address;
   (* Main state of the CPU *)
-  mutable m : memory;
-  mutable r : register_file;
+  m : memory;
+  r : register_file;
   mutable b : backup option;
 }
+
+let string_of_configuration c =
+  "Sancus: " ^ (if c.manage_interrupts then "high" else "low") ^
+  "\nLayout: " ^ string_of_layout c.layout ^
+  "\nClock: " ^ string_of_time c.current_clock ^
+  "\tIO state: " ^ string_of_int c.io_state ^
+  "\tArrival time: " ^ Option.fold ~none:"-" ~some:string_of_time c.arrival_time ^
+  "\tBackup: " ^ Option.fold ~none:"-" ~some:(fun b -> "pad(" ^ string_of_time b.t_pad ^ ")") c.b ^
+  "\n[PC: " ^  string_of_address c.r.pc ^ "]" ^
+  " [PCOLD: " ^ string_of_address c.pc_old ^ "]" ^
+  " [SP: " ^ string_of_address c.r.sp ^ "]" ^
+  " [SR: " ^ string_of_word c.r.sr ^ " (" ^ string_of_sr_flags c.r.sr ^ ")" ^ "]" ^
+  "\n" ^ string_of_register_file_gp c.r
 
 let init_configuration manage_interrupts layout io_device memory () =
   {
@@ -50,7 +65,7 @@ let raise_exception extra_cycles c =
   c.pc_old <- 0xFFFE;
   c.b <- None;
 
-  c.r <- register_file_0 ();
+  copy_register_file c.r (register_file_0 ());
   c.r.pc <- memory_get c.m 0xFFFE
 
 let cpu_mode c = cpu_mode_of_address c.layout c.r.pc
@@ -71,8 +86,7 @@ let rec mac_valid c i =
       && not (is_enclave_entry_point c.layout pc)
   | None -> (
       (* Check all current instruction bytes *)
-      mac_bytes c.layout pc_old X pc (size i)
-      &&
+      mac_region c.layout pc_old X pc (size i) &&
       match i with
       | IN _ | OUT _ -> cpu_mode c = Some UM
       | MOV_LOAD (r1, _) ->

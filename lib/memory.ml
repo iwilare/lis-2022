@@ -13,12 +13,16 @@ let memory_set m a v =
   v land 255 |> Array.set m a;
   v lsr 8 |> Array.set m (a + 1)
 
+let align_even x = x land 0xFFFE
+
 let cycles_per_access =
   3 (* TODO: check if this is consistent with interrupt logic in UM case *)
 
 let is_touching_last_word_address addr = addr == limit - 2 || addr == limit - 1
 
 type enclave_range = { enclave_start : address; enclave_end : address }
+
+let string_of_range r = "[" ^ string_of_address (r.enclave_start) ^ "," ^ string_of_address (r.enclave_end) ^ "]"
 
 type memory_layout = {
   (* Must be non-overlapping region *)
@@ -28,6 +32,8 @@ type memory_layout = {
   code : enclave_range;
   isr : address;
 }
+
+let string_of_layout l = "data: " ^ string_of_range (l.data) ^ " code: " ^ string_of_range (l.code) ^ " isr: " ^ string_of_address (l.isr)
 
 (* Memory type *)
 
@@ -75,9 +81,10 @@ let permissions enc f t =
   | _ -> [ R; W; X ]
 
 let mac enc f right t = List.mem right (permissions enc f t)
-let mac_word enc f right w = mac enc f right w && mac enc f right (w + 1)
 
-let rec mac_bytes enc f right t bytes =
+let rec mac_region enc f right t bytes =
   match bytes with
   | 0 -> true
-  | _ -> mac enc f right t && mac_bytes enc f right (t + 1) (bytes - 1)
+  | _ -> mac enc f right t && mac_region enc f right (t + 1) (bytes - 1)
+
+let mac_word enc f right w = mac_region enc f right w 2

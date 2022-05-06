@@ -39,7 +39,7 @@ let interrupt_logic c =
             let t_pad = c.current_clock - ta in
             let k = max_cycles - t_pad in
             c.b <- Some { r = c.r; t_pad; pc_old = c.pc_old };
-            c.r <- register_file_0 ();
+            copy_register_file c.r (register_file_0 ());
             c.r.pc <- c.layout.isr;
             advance_device (6 + k) c;
             pure)
@@ -100,7 +100,7 @@ let execute_instruction_semantics i c : (unit, halt_error) result =
           | _ ->
               (* CPU-Reti-PrePad *)
               c.b <- None;
-              c.r <- b.r;
+              copy_register_file c.r b.r;
               c.pc_old <- b.pc_old;
               (* CPU-Reti-Pad *)
               advance_device b.t_pad c;

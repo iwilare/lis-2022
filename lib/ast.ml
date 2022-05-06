@@ -3,6 +3,10 @@ type immediate = int
 type byte = int
 type word = int
 
+let string_of_address a = Printf.sprintf "%#5X" a
+let string_of_byte a = Printf.sprintf "%5d" a
+let string_of_word a = Printf.sprintf "%5d" a
+
 type register =
   | PC
   | SP
