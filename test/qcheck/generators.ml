@@ -9,6 +9,7 @@ module Memory = struct
   open QCheck2.Gen
   open Lis2022.Memory
 
+  let reg_value = 0 -- (limit-1)
   let address_in_range a b = a -- b >|= align_even
   let last_valid_address = (limit - 1) - 2
   let address = address_in_range 0 last_valid_address (* Exclude last address *)
@@ -40,7 +41,7 @@ module Memory = struct
 
   let unprotected_address l =
     address_out_of_enclave l.data l.code >|= fun addr ->
-    assert (addr != l.isr); (* TODO: introduce a proper generation mechanism *)
+    (*assert (addr != l.isr);*) (* TODO: introduce a proper generation mechanism *)
     addr
 
   let protected_code_address l = address_in_range l.code.enclave_start l.code.enclave_end
