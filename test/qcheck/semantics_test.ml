@@ -110,4 +110,34 @@ let test_load_um =
     ~name:"MOV_LOAD (UM) changes the second register with the correct value"
     ~count:50 gen property
 
-let tests = [ test_add; test_not; test_mov; test_movi; test_load_um ]
+let test_mov_store =
+  let property (c, w, r) =
+    let touch_last_work_addr =
+      is_touching_last_word_address (register_get c.r r)
+    in
+    let is_mac_word = mac_word c.layout c.r.pc W (register_get c.r r) in
+    let good = step c (MOV_STORE (w, r)) |> Result.is_ok in
+    (*TODO: check if the value are unchanged*)
+    ((not touch_last_work_addr) && is_mac_word)
+    || (good && register_get c.r r == register_get c.r w)
+  in
+  let gen =
+    triple Configuration.configuration_unprotected_minimal Register.gp_register
+      Register.gp_register
+  in
+  QCheck2.Test.make
+    ~name:"MOV_STORE changes the register with the correct value" ~count:50 gen
+    property
+
+let tests =
+  [
+    test_add;
+    test_sub;
+    test_and;
+    test_not;
+    test_mov;
+    test_movi;
+    test_mov_store;
+    test_cmp;
+    test_load_um;
+  ]
