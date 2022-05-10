@@ -14,8 +14,10 @@ check:
 
 checkfmt:
 # linux moment
-
-	$(CC) build @fmt --auto-promote || $(CC) build @fmt --auto-promote 
+	$(CC) build @fmt --auto-promote || $(CC) build @fmt --auto-promote
 
 
 .PHONY: checkfmt
+
+clean:
+	rm -r test/qcheck/.runner.* test/qcheck/runtest-*
