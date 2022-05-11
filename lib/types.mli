@@ -13,9 +13,6 @@ module Word : sig
 end
 
 type word = Word.t
-
 type byte = Byte.t
-
 type address = word
-
 type immediate = word

@@ -9,13 +9,13 @@ let limit = 65536 (* Memory size *)
 let memory_init () = Array.make limit Byte.zero
 let memory_get_byte m (a : address) = Array.get m (Word.to_int a)
 let memory_set_byte m (a : address) (b : byte) = Array.set m (Word.to_int a) b
-let memory_get _ _ = Word.from_int 3
 
-(*
-let memory_get m a = Word.(compose_bytes (Array.get m (to_int a))
-                                         (Array.get m (to_int (a + from_int 1))))
+let memory_get m a =
+  Word.(
+    compose_bytes
+      (Array.get m (to_int (a + from_int 1)))
+      (Array.get m (to_int a)))
 
-                                         *)
 let memory_set m a w =
   Word.(
     decompose_bytes w |> fun (h, l) ->
