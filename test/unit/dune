@@ -1,3 +1,0 @@
-(test
- (name lis2022_unit)
- (libraries ounit2 lis2022))

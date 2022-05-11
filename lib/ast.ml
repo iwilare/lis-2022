@@ -1,11 +1,4 @@
-type address = int
-type immediate = int
-type byte = int
-type word = int
-
-let string_of_address a = Printf.sprintf "%#5X" a
-let string_of_byte a = Printf.sprintf "%5d" a
-let string_of_word a = Printf.sprintf "%5d" a
+open Types
 
 type register =
   | PC
@@ -44,7 +37,7 @@ type instr =
   | CMP of register * register
 
 (* Length in bytes *)
-let size : instr -> byte = function
+let size = function
   | MOV_STORE (_, _) -> 4
   | MOV_IMM (_, _) -> 4
   | NOT _ -> 4

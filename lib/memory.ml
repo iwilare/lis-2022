@@ -1,28 +1,43 @@
-open Ast
+open Types
 
 type memory = byte Array.t
 
-let limit = 65536
-let is_overflow v = v < 0 || limit <= v
-let memory_init () = Array.make limit 0
-let memory_get_byte = Array.get
-let memory_get m a = Array.get m a + (Array.get m (a + 1) lsl 8)
-let memory_set_byte = Array.set
+let w0xFFFF = Word.from_int 0xFFFF (* Last byte *)
+let w0xFFFE = Word.from_int 0xFFFE (* Last word; also, parity bit mask *)
+let w0xFFFC = Word.from_int 0xFFFC (* Last valid word address *)
+let limit = 65536 (* Memory size *)
+let memory_init () = Array.make limit Byte.zero
+let memory_get_byte m (a : address) = Array.get m (Word.to_int a)
+let memory_set_byte m (a : address) (b : byte) = Array.set m (Word.to_int a) b
+let memory_get _ _ = Word.from_int 3
 
-let memory_set m a v =
-  v land 255 |> Array.set m a;
-  v lsr 8 |> Array.set m (a + 1)
+(*
+let memory_get m a = Word.(compose_bytes (Array.get m (to_int a))
+                                         (Array.get m (to_int (a + from_int 1))))
 
-let align_even x = x land 0xFFFE
+                                         *)
+let memory_set m a w =
+  Word.(
+    decompose_bytes w |> fun (h, l) ->
+    l |> Array.set m (to_int a);
+    h |> Array.set m (to_int (a + from_int 1)))
+
+let align_even x = Word.(x land w0xFFFE)
 
 let cycles_per_access =
   3 (* TODO: check if this is consistent with interrupt logic in UM case *)
 
-let is_touching_last_word_address addr = addr == limit - 2 || addr == limit - 1
+let is_touching_last_word_address (addr : word) =
+  addr = w0xFFFE || addr = w0xFFFF
 
 type enclave_range = { enclave_start : address; enclave_end : address }
 
-let string_of_range r = "[" ^ string_of_address (r.enclave_start) ^ "," ^ string_of_address (r.enclave_end) ^ "]"
+let string_of_range r =
+  "["
+  ^ Word.show_address r.enclave_start
+  ^ ","
+  ^ Word.show_address r.enclave_end
+  ^ "]"
 
 type memory_layout = {
   (* Must be non-overlapping region *)
@@ -33,7 +48,9 @@ type memory_layout = {
   isr : address;
 }
 
-let string_of_layout l = "data: " ^ string_of_range (l.data) ^ " code: " ^ string_of_range (l.code) ^ " isr: " ^ string_of_address (l.isr)
+let string_of_layout l =
+  "data: " ^ string_of_range l.data ^ " code: " ^ string_of_range l.code
+  ^ " isr: " ^ Word.show_address l.isr
 
 (* Memory type *)
 
@@ -85,6 +102,8 @@ let mac enc f right t = List.mem right (permissions enc f t)
 let rec mac_region enc f right t bytes =
   match bytes with
   | 0 -> true
-  | _ -> mac enc f right t && mac_region enc f right (t + 1) (bytes - 1)
+  | _ ->
+      mac enc f right t
+      && mac_region enc f right Word.(t + from_int 1) (bytes - 1)
 
 let mac_word enc f right w = mac_region enc f right w 2

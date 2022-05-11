@@ -1,25 +1,24 @@
-open Ast
+open Types
 
-type io_state = int
 type io_event = Epsilon | Read of word | Write of word | Interrupt
 
-type transition_type =
-  | EpsilonTransition of io_state
-  | InterruptTransition of io_state
+type 'io_state transition_type =
+  | EpsilonTransition of 'io_state
+  | InterruptTransition of 'io_state
 
-type io_possibilities = {
+type 'io_state io_possibilities = {
   (* Either epsilon or interrupt, one of the two *)
-  main_transition : transition_type;
+  main_transition : 'io_state transition_type;
   (* Output from the device, an input to the CPU *)
-  read_transition : (word * io_state) option;
+  read_transition : (word * 'io_state) option;
   (* Input to the device, a write from the CPU *)
-  write_transitions : word -> io_state option;
+  write_transitions : word -> 'io_state option;
 }
 
-type io_device = {
-  states : io_state list;
-  init_state : io_state;
-  delta : io_state -> io_possibilities;
+type 'io_state io_device = {
+  states : 'io_state list;
+  init_state : 'io_state;
+  delta : 'io_state -> 'io_state io_possibilities;
 }
 
 (**
@@ -43,10 +42,10 @@ let rec advance device (k : int) ((io_state, t, arrival_time) as c) =
       in
       advance device (k - 1) next_config
 
-let default_io_device =
+let default_io_device : word io_device =
   {
     states = [];
-    init_state = 0;
+    init_state = Word.zero;
     delta =
       (fun x ->
         {

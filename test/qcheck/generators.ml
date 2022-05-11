@@ -3,37 +3,38 @@
 Helper modules to generate relevant data structures and values for tests
 
 NOTE: ALWAYS USE QCHECK2 instead of QCHECK when possible
- *)
+*)
 
 module Memory = struct
   open QCheck2.Gen
   open Lis2022.Memory
+  open Lis2022.Types
+  open Lis2022.Types.Word
 
-  let reg_value = 0 -- (limit-1)
-  let address_in_range a b = a -- b >|= align_even
-  let last_valid_address = (limit - 1) - 2
-  let address = address_in_range 0 last_valid_address (* Exclude last address *)
+  let word = 0x0000 -- 0xFFFF >|= from_int
+  let byte = 0x00 -- 0xFF >|= Byte.from_int
 
-  let byte = 0 -- 255
-  let word = pair byte byte >|= fun (b1,b2) -> (b1 lsl 8) lor b2
-  let memory = array_size (return limit) byte
+  let last_valid_address = w0xFFFC
+  let address_in_range a b = to_int a -- to_int b >|= fun w -> align_even (from_int w)
+  let address = address_in_range zero w0xFFFC (* Exclude last address *)
+  let memory = array_size (pure limit) (pure (Byte.from_int 0)) (* TODO: fix this *)
 
   let enclave_range a b =
-    a -- (b - 1) >>= fun enclave_start ->
-    (enclave_start + 1) -- b >>= fun enclave_end ->
-    pure { enclave_start; enclave_end }
+    address_in_range a (b - from_int 1) >>= fun enclave_start ->
+    address_in_range (enclave_start + from_int 1) b >|= fun enclave_end ->
+    { enclave_start; enclave_end; }
 
   let address_out_of_enclave data code =
     oneof [
-      address_in_range 0 (min data.enclave_start code.enclave_start);
+      address_in_range zero (min data.enclave_start code.enclave_start);
       address_in_range (min data.enclave_end code.enclave_end) (max data.enclave_start code.enclave_start);
-      address_in_range (max data.enclave_end code.enclave_end) (limit - 1)
+      address_in_range (max data.enclave_end code.enclave_end) last_valid_address
     ]
 
   let layout =
-    let low = enclave_range 0 (last_valid_address / 2) in
+    let low = enclave_range zero (last_valid_address lsr 1) in
     (* Avoid the first address, = ISR *)
-    let high = enclave_range (last_valid_address / 2 + 1) last_valid_address in
+    let high = enclave_range (last_valid_address lsr 1 + from_int 1) last_valid_address in
     (* Avoid the last address *)
     oneof [ pair low high; pair high low ] >>= fun (data, code) ->
     address_out_of_enclave data code >|= fun isr ->
@@ -96,12 +97,12 @@ module Register = struct
   let register_file_protected layout =
     Memory.protected_code_address layout >>= fun pc ->
     Memory.protected_code_address layout >>= fun sp ->
-    any_register_file >|= fun r -> {r with pc}
+    any_register_file >|= fun r -> {r with pc; sp}
 
   let register_file_unprotected layout =
     Memory.unprotected_address layout >>= fun pc ->
     Memory.unprotected_address layout >>= fun sp ->
-    any_register_file >|= fun r -> {r with pc}
+    any_register_file >|= fun r -> {r with pc; sp}
 end
 
 module Configuration = struct

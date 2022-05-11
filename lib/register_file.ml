@@ -1,12 +1,13 @@
+open Types
 open Ast
 open Memory
 
-let zero : word = 0b00000000
-let mask_gie : word = 0b00001000
-let mask_v : word = 0b00010000
-let mask_n : word = 0b00100000
-let mask_z : word = 0b01000000
-let mask_c : word = 0b10000000
+let zero : word = Word.from_int 0b00000000
+let mask_gie : word = Word.from_int 0b00001000
+let mask_v : word = Word.from_int 0b00010000
+let mask_n : word = Word.from_int 0b00100000
+let mask_z : word = Word.from_int 0b01000000
+let mask_c : word = Word.from_int 0b10000000
 
 type register_file = {
   mutable pc : word;
@@ -28,19 +29,18 @@ type register_file = {
 }
 
 let string_of_register_file_gp r =
-  "[R3: " ^ string_of_word r.r3 ^ "]" ^
-  " [R4: " ^ string_of_word r.r4 ^ "]" ^
-  " [R5: " ^ string_of_word r.r5 ^ "]" ^
-  (*" [R6: " ^ string_of_word r.r6 ^ "]" ^
-  " [R7: " ^ string_of_word r.r7 ^ "]" ^
-  " [R8: " ^ string_of_word r.r8 ^ "]" ^
-  " [R9: " ^ string_of_word r.r9 ^ "]" ^
-  " [R10: " ^ string_of_word r.r10 ^ "]" ^
-  " [R11: " ^ string_of_word r.r11 ^ "]" ^
-  " [R12: " ^ string_of_word r.r12 ^ "]" ^
-  " [R13: " ^ string_of_word r.r13 ^ "]" ^
-  " [R14: " ^ string_of_word r.r14 ^ "]" ^*) " ..." ^
-  " [R15: " ^ string_of_word r.r15 ^ "]"
+  "[R3: " ^ Word.show r.r3 ^ "]" ^ " [R4: " ^ Word.show r.r4 ^ "]" ^ " [R5: "
+  ^ Word.show r.r5 ^ "]"
+  (*" [R6: " ^ Word.show r.r6 ^ "]" ^
+    " [R7: " ^ Word.show r.r7 ^ "]" ^
+    " [R8: " ^ Word.show r.r8 ^ "]" ^
+    " [R9: " ^ Word.show r.r9 ^ "]" ^
+    " [R10: " ^ Word.show r.r10 ^ "]" ^
+    " [R11: " ^ Word.show r.r11 ^ "]" ^
+    " [R12: " ^ Word.show r.r12 ^ "]" ^
+    " [R13: " ^ Word.show r.r13 ^ "]" ^
+    " [R14: " ^ Word.show r.r14 ^ "]" ^*) ^ " ..."
+  ^ " [R15: " ^ Word.show r.r15 ^ "]"
 
 let string_of_register = function
   | PC -> "PC"
@@ -78,12 +78,23 @@ let register_get regs = function
   | R14 -> regs.r14
   | R15 -> regs.r15
 
-let get_bit mask x = x land mask > 0
-let set_bit mask b x = if b then x lor mask else x land lnot mask
+let get_bit mask x = Word.(x land mask > zero)
+
+let set_bit mask b (x : word) =
+  Word.(if b then x lor mask else x land lnot mask)
 
 let string_of_sr_flags sr =
   let string_of_bool b = if b then "1" else "0" in
-  "GIE=" ^ string_of_bool (get_bit mask_gie sr) ^ " V=" ^ string_of_bool (get_bit mask_v sr) ^ " N=" ^ string_of_bool (get_bit mask_n sr) ^ " Z=" ^ string_of_bool (get_bit mask_z sr) ^ " C=" ^ string_of_bool (get_bit mask_c sr)
+  "GIE="
+  ^ string_of_bool (get_bit mask_gie sr)
+  ^ " V="
+  ^ string_of_bool (get_bit mask_v sr)
+  ^ " N="
+  ^ string_of_bool (get_bit mask_n sr)
+  ^ " Z="
+  ^ string_of_bool (get_bit mask_z sr)
+  ^ " C="
+  ^ string_of_bool (get_bit mask_c sr)
 
 let register_set layout regs r w =
   match r with
@@ -109,7 +120,7 @@ let register_set layout regs r w =
   | R14 -> regs.r14 <- w
   | R15 -> regs.r15 <- w
 
-let copy_register_file r1 r2 = begin
+let copy_register_file r1 r2 =
   r1.pc <- r2.pc;
   r1.sp <- r2.sp;
   r1.sr <- r2.sr;
@@ -126,44 +137,44 @@ let copy_register_file r1 r2 = begin
   r1.r13 <- r2.r13;
   r1.r14 <- r2.r14;
   r1.r15 <- r2.r15
-end
 
 let register_file_0 () =
-  {
-    pc = 0;
-    sp = 0;
-    sr = 0;
-    r3 = 0;
-    r4 = 0;
-    r5 = 0;
-    r6 = 0;
-    r7 = 0;
-    r8 = 0;
-    r9 = 0;
-    r10 = 0;
-    r11 = 0;
-    r12 = 0;
-    r13 = 0;
-    r14 = 0;
-    r15 = 0;
-  }
+  Word.
+    {
+      pc = zero;
+      sp = zero;
+      sr = zero;
+      r3 = zero;
+      r4 = zero;
+      r5 = zero;
+      r6 = zero;
+      r7 = zero;
+      r8 = zero;
+      r9 = zero;
+      r10 = zero;
+      r11 = zero;
+      r12 = zero;
+      r13 = zero;
+      r14 = zero;
+      r15 = zero;
+    }
 
 let register_file_init m () =
   {
-    pc = memory_get m 0xFFFE;
-    sp = 0;
+    pc = memory_get m (Word.from_int 0xFFFE);
+    sp = zero;
     sr = mask_gie;
-    r3 = 0;
-    r4 = 0;
-    r5 = 0;
-    r6 = 0;
-    r7 = 0;
-    r8 = 0;
-    r9 = 0;
-    r10 = 0;
-    r11 = 0;
-    r12 = 0;
-    r13 = 0;
-    r14 = 0;
-    r15 = 0;
+    r3 = zero;
+    r4 = zero;
+    r5 = zero;
+    r6 = zero;
+    r7 = zero;
+    r8 = zero;
+    r9 = zero;
+    r10 = zero;
+    r11 = zero;
+    r12 = zero;
+    r13 = zero;
+    r14 = zero;
+    r15 = zero;
   }
