@@ -116,7 +116,7 @@ let test_mov_store =
       is_touching_last_word_address (register_get c.r r)
     in
     let is_mac_word = mac_word c.layout c.r.pc W (register_get c.r r) in
-    let good = step c (MOV_STORE (w, r)) |> Result.is_ok in
+    let good = step c (MOV_STORE (w, r)) |> is_ok in
     (*TODO: check if the value are unchanged*)
     ((not touch_last_work_addr) && is_mac_word)
     || (good && register_get c.r r == register_get c.r w)
@@ -130,14 +130,4 @@ let test_mov_store =
     property
 
 let tests =
-  [
-    test_add;
-    test_sub;
-    test_and;
-    test_not;
-    test_mov;
-    test_movi;
-    test_mov_store;
-    test_cmp;
-    test_load_um;
-  ]
+  [ test_add; test_not; test_mov; test_movi; test_mov_store; test_load_um ]
