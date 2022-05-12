@@ -57,22 +57,35 @@ module Memory = struct
     (* TODO: introduce a proper generation mechanism *)
     addr
 
-  let protected_code_address l =
+  let protected_address l =
     address_in_range l.code.enclave_start l.code.enclave_end
 
   let protected_data_address l =
     address_in_range l.data.enclave_start l.data.enclave_end
 
-  let protected_address layout =
-    oneof [ protected_code_address layout; protected_data_address layout ]
+  let any_protected_address layout =
+    oneof [ protected_address layout; protected_data_address layout ]
 end
 
 module Register = struct
   open QCheck2.Gen
   open Lis2022.Register_file
   open Lis2022.Ast
+  open Lis2022.Types.Word
 
   let sr_mask = oneofl [ mask_c; mask_gie; mask_n; mask_v; mask_z ]
+
+  let sr_register_value =
+    QCheck2.Gen.bool >>= fun c ->
+    QCheck2.Gen.bool >>= fun gie ->
+    QCheck2.Gen.bool >>= fun n ->
+    QCheck2.Gen.bool >>= fun v ->
+    QCheck2.Gen.bool >>= fun z ->
+    pure ((if c then mask_c else zero)
+      lor (if gie then mask_gie else zero)
+      lor (if n then mask_n else zero)
+      lor (if v then mask_v else zero)
+      lor (if z then mask_z else zero))
 
   (* Any register *)
   let any_register =
@@ -110,14 +123,16 @@ module Register = struct
       { pc; sp; sr; r3; r4; r5; r6; r7; r8; r9; r10; r11; r12; r13; r14; r15 }
 
   let register_file_protected layout =
-    Memory.protected_code_address layout >>= fun pc ->
-    Memory.protected_code_address layout >>= fun sp ->
-    any_register_file >|= fun r -> { r with pc; sp }
+    Memory.protected_address layout >>= fun pc ->
+    Memory.unprotected_address layout >>= fun sp -> (* SP always points to an unprotected location *)
+    sr_register_value >>= fun sr ->
+    any_register_file >|= fun r -> { r with pc; sp; sr }
 
   let register_file_unprotected layout =
     Memory.unprotected_address layout >>= fun pc ->
     Memory.unprotected_address layout >>= fun sp ->
-    any_register_file >|= fun r -> { r with pc; sp }
+    sr_register_value >>= fun sr ->
+    any_register_file >|= fun r -> { r with pc; sp; sr }
 end
 
 module Configuration = struct
@@ -132,23 +147,23 @@ module Configuration = struct
   let default_io_device = default_io_device
   (* Careful! Global because of efficiency, should not be overwritten by tests *)
 
-  let configuration_unprotected_minimal =
+  let configuration_minimal register_file_gen pc_old_gen =
     Memory.layout >>= fun layout ->
-    Register.register_file_unprotected layout >|= fun r ->
+    register_file_gen layout >>= fun r ->
+    pc_old_gen layout >|= fun pc_old ->
     {
       (init_configuration true layout default_io_device default_memory ()) with
+      pc_old;
       r;
     }
+
+  let configuration_unprotected_minimal =
+    configuration_minimal Register.register_file_unprotected Memory.unprotected_address
 
   let configuration_protected_minimal =
-    Memory.layout >>= fun layout ->
-    Register.register_file_protected layout >|= fun r ->
-    {
-      (init_configuration true layout default_io_device default_memory ()) with
-      r;
-    }
+      configuration_minimal Register.register_file_protected Memory.protected_address
 
-  let configuration_minimal =
+  let any_configuration_minimal =
     oneof [ configuration_unprotected_minimal; configuration_protected_minimal ]
 end
 

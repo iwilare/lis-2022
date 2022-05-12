@@ -1,7 +1,5 @@
 open Types
 
-type io_event = Epsilon | Read of word | Write of word | Interrupt
-
 type 'io_state transition_type =
   | EpsilonTransition of 'io_state
   | InterruptTransition of 'io_state
