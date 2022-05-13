@@ -3,8 +3,8 @@ open QCheck2.Gen
 open Lis2022.Register_file
 open Lis2022.Configuration
 open Lis2022.Memory
-open Lis2022.Types.Word
 open Lis2022.Ast
+open Lis2022.Types
 open Lis2022.Semantics
 open Generators
 open Semantics (Lis2022.Interrupt_logic.Sancus_low)
@@ -44,7 +44,7 @@ let test_not =
 
     let good = step c (NOT r) |> is_ok in
 
-    good && register_get c.r r == lnot before_r
+    good && register_get c.r r == Word.lnot before_r
   in
   let gen =
     pair Configuration.configuration_unprotected_minimal Register.gp_register
@@ -96,7 +96,7 @@ let test_load_um =
   in
   let gen =
       Configuration.configuration_unprotected_minimal >>= fun config ->
-      QCheck2.Gen.quad (pure config) Register.gp_register Register.gp_register (Memory.unprotected_address config.layout) 
+      QCheck2.Gen.quad (pure config) Register.gp_register Register.gp_register (Memory.unprotected_address config.layout)
   in
   QCheck2.Test.make
     ~name:"MOV_LOAD (UM) changes the second register with the correct value"
@@ -120,10 +120,10 @@ let test_store_um =
   in
   let gen =
     Configuration.configuration_unprotected_minimal >>= fun config ->
-    QCheck2.Gen.quad (pure config) Register.gp_register Register.gp_register (Memory.unprotected_address config.layout) 
+    QCheck2.Gen.quad (pure config) Register.gp_register Register.gp_register (Memory.unprotected_address config.layout)
   in
   QCheck2.Test.make
-    ~name:"MOV_STORE (UM) changes the register with the correct value" 
+    ~name:"MOV_STORE (UM) changes the register with the correct value"
     ~count:50 gen property
 
 let test_j0_um =
@@ -140,25 +140,25 @@ let test_j0_um =
     let good = step c i |> is_ok in
     let unchanged_r = register_get c.r r = before_r in
 
-    good && unchanged_r && (    z ==> c.r.pc = register_get c.r r)
-                        && (not z ==> c.r.pc = before_pc + from_int (size i))
+    good && unchanged_r && QCheck2.(    z ==> (c.r.pc = register_get c.r r))
+                        && QCheck2.(not z ==> Word.(c.r.pc = before_pc + Word.from_int (size i)))
   in
   let gen =
       Configuration.configuration_unprotected_minimal >>= fun config ->
-      QCheck2.Gen.triple (pure config) Register.gp_register (Memory.unprotected_address config.layout) 
+      QCheck2.Gen.triple (pure config) Register.gp_register (Memory.unprotected_address config.layout)
   in
   QCheck2.Test.make
     ~name:"J0 (UM) changes the second register with the correct value"
     ~count:50 gen property
-    
+
 let tests =
-  [ 
-    test_operation "ADD" Overflow.(+) (fun (r1,r2) -> ADD(r1, r2));
-    test_operation "SUB" Overflow.(-) (fun (r1,r2) -> SUB(r1, r2));
-    test_operation "AND" Overflow.(land) (fun (r1,r2) -> AND(r1, r2));
+  [
+    test_operation "ADD" Word.Overflow.(+) (fun (r1,r2) -> ADD(r1, r2));
+    test_operation "SUB" Word.Overflow.(-) (fun (r1,r2) -> SUB(r1, r2));
+    test_operation "AND" Word.Overflow.(land) (fun (r1,r2) -> AND(r1, r2));
     test_not;
     test_mov;
     test_movi;
     test_store_um;
-    test_load_um 
+    test_load_um
   ]

@@ -167,4 +167,61 @@ module Configuration = struct
     oneof [ configuration_unprotected_minimal; configuration_protected_minimal ]
 end
 
-module Device = struct end
+module Device = struct
+  open QCheck2.Gen
+  open Lis2022.Io_device
+  open Lis2022.Types
+
+  let io_state_max = 4 -- 8
+  let io_state max = 1 -- max
+
+  let transition_type max =
+    io_state max >>= fun s -> oneofl [ EpsilonTransition s; InterruptTransition s]
+
+  let write_transitions_max = 16
+
+  let io_possibilities states write_transitions =
+    transition_type states >>= fun main_transition ->
+    opt (pair Memory.word (io_state states)) >>= fun read_transition ->
+    list_size (pure write_transitions) (io_state states) >>= fun all_write_transitions ->
+    let all_words = List.map Word.from_int (List.init write_transitions succ) in
+    pure {
+      main_transition;
+      read_transition;
+      write_transitions = fun s -> List.assoc_opt s (List.combine all_words all_write_transitions)
+    }
+
+  let device states write_transitions =
+    io_state states >>= fun init_state ->
+    list_size (pure states) (io_possibilities states write_transitions) >>= fun all_transitions ->
+    let states = List.init states succ in
+    pure {
+     states;
+     init_state;
+     delta = fun s -> List.assoc s (List.combine states all_transitions)
+    }
+
+  let security_relevant_delta_transitions states when_interrupt =
+    states
+      |> List.map succ
+      |> List.mapi (fun i next_state ->
+        {
+          main_transition = if i == when_interrupt then InterruptTransition next_state else EpsilonTransition next_state;
+          read_transition = Some(Word.from_int i, next_state);
+          write_transitions = Fun.const None
+        })
+
+  (* Linear automaton in which:
+      - each transition is epsilon except for one at time `when_interrupt`
+      - each transition points to the next state
+      - always outputs the elapsed time from the start as read transition
+  *)
+  let security_relevant_device states when_interrupt =
+    let states = List.init states succ in
+    pure {
+     states;
+     init_state = 0;
+     delta = fun s -> List.assoc s (List.combine states (security_relevant_delta_transitions states when_interrupt))
+    }
+
+end
