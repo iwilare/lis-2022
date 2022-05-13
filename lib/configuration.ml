@@ -38,7 +38,7 @@ let string_of_configuration c =
   ^ (if c.manage_interrupts then "high" else "low")
   ^ "\nLayout: " ^ string_of_layout c.layout ^ "\nClock: "
   ^ string_of_time c.current_clock
-  ^ "\tIO state: " ^ Word.show c.io_state ^ "\tArrival time: "
+  ^ "\tIO state: " ^ string_of_int c.io_state ^ "\tArrival time: "
   ^ Option.fold ~none:"-" ~some:string_of_time c.arrival_time
   ^ "\tBackup: "
   ^ Option.fold ~none:"-"
@@ -109,10 +109,8 @@ let rec mac_valid c i =
           (* Check that we can read PC and SP from the stack *)
       | _ -> true (* HALT should always be executable *))
 
-let advance_device k c =
-  let io_state, current_clock, arrival_time =
-    advance c.io_device k (c.io_state, c.current_clock, c.arrival_time)
-  in
+let advance_configuration k c =
+  let io_state, current_clock, arrival_time = advance c.io_device k (c.io_state, c.current_clock, c.arrival_time) in
   c.io_state <- io_state;
   c.current_clock <- current_clock;
   c.arrival_time <- arrival_time

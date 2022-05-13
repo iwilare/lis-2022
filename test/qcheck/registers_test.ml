@@ -8,7 +8,7 @@ let test_align_even =
   in
   let gen = Generators.Memory.address in
   QCheck2.Test.make ~name:"Align even always returns the correct even address"
-    ~count:100 gen property
+    ~count:50 gen property
 
 let set_bit_works_as_expected =
   let property (mask, b, x) =
@@ -21,5 +21,4 @@ let set_bit_works_as_expected =
   in
   QCheck2.Test.make ~name:"Set bit works correctly" ~count:50 gen property
 
-(*ways to property test mutations? *)
 let tests = [ test_align_even; set_bit_works_as_expected ]

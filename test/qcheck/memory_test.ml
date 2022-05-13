@@ -20,8 +20,6 @@ let test_word_set_is_involutive =
   let gen = QCheck2.Gen.triple memory address word in
   QCheck2.Test.make
     ~name:"memory set memory get of words returns the initial value" ~count:50
-    ~print:(fun (_, a, v) ->
-      "Address: " ^ Word.show_address a ^ "   Val: " ^ Word.show v)
     gen property
 
 let tests = [ test_byte_set_is_involutive; test_word_set_is_involutive ]

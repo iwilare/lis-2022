@@ -159,7 +159,7 @@ module Configuration = struct
     let* t_pad = t_pad in
     pure {r; pc_old; t_pad}
 
-  let configuration_unprotected_minimal =
+  let configuration_unprotected_minimal ?io_device:(io_device = default_io_device) () =
     let* layout = Memory.layout in
     let* r = Register.register_file_unprotected layout in
     let* pc_old = Memory.unprotected_address layout in
@@ -167,39 +167,36 @@ module Configuration = struct
     (* If the backup is Some(...) then set GIE to zero in the configuration *)
     let set_gie_zero_if_backup = Option.fold b ~none:Fun.id ~some:(Fun.const (set_bit mask_gie false)) in
     pure {
-      (init_configuration true layout default_io_device default_memory ()) with
+      (init_configuration true layout io_device default_memory ()) with
       pc_old;
       r = {r with sr = set_gie_zero_if_backup r.sr};
       b;
     }
 
-  let configuration_protected_minimal =
+  let configuration_protected_minimal ?io_device:(io_device = default_io_device) () =
     let* layout = Memory.layout in
     let* r = Register.register_file_protected layout in
     let* pc_old = Memory.protected_address layout in
     pure {
-      (init_configuration true layout default_io_device default_memory ()) with
+      (init_configuration true layout io_device default_memory ()) with
       pc_old;
       r;
       b = None;
     }
 
   let any_configuration_minimal =
-    oneof [ configuration_unprotected_minimal; configuration_protected_minimal ]
+    oneof [ configuration_unprotected_minimal (); configuration_protected_minimal () ]
 end
 
-module Device = struct
+module Io_device = struct
   open QCheck2.Gen
   open Lis2022.Io_device
   open Lis2022.Types
 
-  let io_state_max = 4 -- 8
   let io_state max = 1 -- max
 
   let transition_type max =
     let* s = io_state max in oneofl [ EpsilonTransition s; InterruptTransition s]
-
-  let write_transitions_max = 16
 
   let io_possibilities states write_transitions =
     let* main_transition = transition_type states in

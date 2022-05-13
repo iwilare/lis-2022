@@ -20,8 +20,8 @@ module Semantics (I : Interrupt_logic) = struct
       rset_bit SR mask_c (v <> zero);
       rset_bit SR mask_v is_overflow
     in
-    let epilogue =
-      advance_device (cycles i) c;
+    let epilogue () =
+      advance_configuration (cycles i) c;
       I.interrupt_logic c
     in
     match i with
@@ -38,7 +38,8 @@ module Semantics (I : Interrupt_logic) = struct
         | Some (w, d') ->
             rset r @@ w;
             c.io_state <- d';
-            advance_device Stdlib.(cycles i - 1) c;
+            c.current_clock <- Stdlib.(c.current_clock + 1);
+            advance_configuration Stdlib.(cycles i - 1) c;
             (* Advance must do one cycle less *)
             I.interrupt_logic c)
     | OUT r -> (
@@ -46,13 +47,14 @@ module Semantics (I : Interrupt_logic) = struct
         | None -> `halt NoOut
         | Some d' ->
             c.io_state <- d';
-            advance_device Stdlib.(cycles i - 1) c;
+            c.current_clock <- Stdlib.(c.current_clock + 1);
+            advance_configuration Stdlib.(cycles i - 1) c;
             (* Advance must do one cycle less *)
             I.interrupt_logic c)
     | RETI -> (
         match c.b with
         | Some b -> (
-            advance_device (cycles i) c;
+            advance_configuration (cycles i) c;
             match c.arrival_time with
             | Some _ when flag_gie c ->
                 (* CPU-Reti-Chain *)
@@ -64,7 +66,7 @@ module Semantics (I : Interrupt_logic) = struct
                 copy_register_file c.r b.r;
                 c.pc_old <- b.pc_old;
                 (* CPU-Reti-Pad *)
-                advance_device b.t_pad c;
+                advance_configuration b.t_pad c;
                 I.interrupt_logic c)
         | None ->
             (* CPU-Reti *)
@@ -77,51 +79,51 @@ module Semantics (I : Interrupt_logic) = struct
             (* Restore SR *)
             rset SP @@ (rget SP + from_int 4);
             (* Clean up the stack *)
-            advance_device (cycles i) c;
+            advance_configuration (cycles i) c;
             (* NO INTERRUPT LOGIC HERE! *)
             `ok)
     | MOV_LOAD (r1, r2) ->
         rset r2 @@ mget (rget r1);
-        epilogue
+        epilogue ()
     | MOV_STORE (r1, r2) ->
         mset (rget r2) (rget r1);
-        epilogue
+        epilogue ()
     | MOV (r1, r2) ->
         rset r2 (rget r1);
-        epilogue
+        epilogue ()
     | MOV_IMM (w, r) ->
         rset r w;
-        epilogue
-    | NOP -> epilogue
+        epilogue ()
+    | NOP -> epilogue ()
     | JZ r ->
         if flag_z c then rset PC @@ rget r
           (* Else: next instruction is the following one *);
-        epilogue
+        epilogue ()
     | JMP r ->
         rset PC @@ rget r;
-        epilogue
+        epilogue ()
     | NOT r ->
         rset r (lnot (rget r));
-        epilogue
+        epilogue ()
     | CMP (r1, r2) ->
         let value, overflow = Overflow.(rget r1 - rget r2) in
         set_status_register_flags value overflow;
-        epilogue
+        epilogue ()
     | AND (r1, r2) ->
         let value, overflow = Overflow.(rget r1 land rget r2) in
         rset r2 value;
         set_status_register_flags value overflow;
-        epilogue
+        epilogue ()
     | ADD (r1, r2) ->
         let value, overflow = Overflow.(rget r1 + rget r2) in
         rset r2 value;
         set_status_register_flags value overflow;
-        epilogue
+        epilogue ()
     | SUB (r1, r2) ->
         let value, overflow = Overflow.(rget r1 - rget r2) in
         rset r2 value;
         set_status_register_flags value overflow;
-        epilogue
+        epilogue ()
 
   let step (c : 'io_device configuration) (i : instr) =
     let rget = register_get c.r in
