@@ -26,7 +26,8 @@ module Sancus_low = struct
             rset PC c.layout.isr;
             rset SR Word.zero;
             rset SP Word.(rget SP - from_int 4);
-            advance_device 6 c; (* 6 cycles is to access memory and update the registers *)
+            advance_device 6 c;
+            (* 6 cycles is to access memory and update the registers *)
             `ok
         | Some PM ->
             let t_pad = c.current_clock - ta in
@@ -56,7 +57,8 @@ module Sancus_below = struct
             rset PC c.layout.isr;
             rset SR Word.zero;
             rset SP Word.(rget SP - from_int 4);
-            advance_device 6 c; (* 6 cycles is to access memory and update the registers *)
+            advance_device 6 c;
+            (* 6 cycles is to access memory and update the registers *)
             `ok
         | Some PM ->
             let t_pad = c.current_clock - ta in

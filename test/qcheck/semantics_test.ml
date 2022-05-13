@@ -58,14 +58,15 @@ let test_mov =
 
     let good = step c (MOV (r1, r2)) |> is_ok in
 
-    good && before_r1 == register_get c.r r1 && before_r1 == register_get c.r r2
+    good && before_r1 == register_get c.r r1
+         && before_r1 == register_get c.r r2
   in
   let gen =
     triple Configuration.configuration_unprotected_minimal Register.gp_register
       Register.gp_register
   in
   QCheck2.Test.make
-    ~name:"MOV changes the second register with the correct value" ~count:50 gen
+    ~name:"MOV changes the second register with the correct value from the first" ~count:50 gen
     property
 
 let test_movi =
@@ -78,7 +79,7 @@ let test_movi =
     triple Configuration.configuration_unprotected_minimal Memory.word
       Register.gp_register
   in
-  QCheck2.Test.make ~name:"MOV_IMM changes the register with the correct value"
+  QCheck2.Test.make ~name:"MOV_IMM changes the register with the immediate value provided"
     ~count:50 gen property
 
 let test_load_um =
@@ -99,7 +100,7 @@ let test_load_um =
       QCheck2.Gen.quad (pure config) Register.gp_register Register.gp_register (Memory.unprotected_address config.layout)
   in
   QCheck2.Test.make
-    ~name:"MOV_LOAD (UM) changes the second register with the correct value"
+    ~name:"MOV_LOAD (UM) changes the memory with the correct value from the register"
     ~count:50 gen property
 
 let test_store_um =
@@ -123,10 +124,10 @@ let test_store_um =
     QCheck2.Gen.quad (pure config) Register.gp_register Register.gp_register (Memory.unprotected_address config.layout)
   in
   QCheck2.Test.make
-    ~name:"MOV_STORE (UM) changes the register with the correct value"
+    ~name:"MOV_STORE (UM) changes the register with the correct value from the memory"
     ~count:50 gen property
 
-let test_j0_um =
+let test_j0_um_yes =
   let property (c, r, unprotected_addr) =
     (* Set the address in r1 *)
     register_set c.layout c.r r unprotected_addr;
@@ -140,15 +141,37 @@ let test_j0_um =
     let good = step c i |> is_ok in
     let unchanged_r = register_get c.r r = before_r in
 
-    good && unchanged_r && QCheck2.(    z ==> (c.r.pc = register_get c.r r))
-                        && QCheck2.(not z ==> Word.(c.r.pc = before_pc + Word.from_int (size i)))
+    good && unchanged_r && QCheck2.(not z ==> Word.(c.r.pc = before_pc + Word.from_int (size i)))
   in
   let gen =
       Configuration.configuration_unprotected_minimal >>= fun config ->
       QCheck2.Gen.triple (pure config) Register.gp_register (Memory.unprotected_address config.layout)
   in
   QCheck2.Test.make
-    ~name:"J0 (UM) changes the second register with the correct value"
+    ~name:"J0 (UM) goes to the next instruction if the flag is false"
+    ~count:50 gen property
+
+let test_j0_um_no =
+  let property (c, r, unprotected_addr) =
+    (* Set the address in r1 *)
+    register_set c.layout c.r r unprotected_addr;
+
+    let before_r = register_get c.r r in
+
+    let z = get_bit mask_z c.r.sr in
+
+    let i = JZ r in
+    let good = step c i |> is_ok in
+    let unchanged_r = register_get c.r r = before_r in
+
+    good && unchanged_r && QCheck2.(z ==> (c.r.pc = register_get c.r r))
+  in
+  let gen =
+      Configuration.configuration_unprotected_minimal >>= fun config ->
+      QCheck2.Gen.triple (pure config) Register.gp_register (Memory.unprotected_address config.layout)
+  in
+  QCheck2.Test.make
+    ~name:"J0 (UM) jumps if the flags is true"
     ~count:50 gen property
 
 let tests =
@@ -160,5 +183,7 @@ let tests =
     test_mov;
     test_movi;
     test_store_um;
-    test_load_um
+    test_load_um;
+    test_j0_um_yes;
+    test_j0_um_no;
   ]

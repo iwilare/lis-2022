@@ -16,7 +16,8 @@ module Memory = struct
   let last_valid_address = w0xFFFC
 
   let address_in_range a b =
-    to_int a -- to_int b >|= fun w -> align_even (from_int w)
+    let* w = to_int a -- to_int b in
+    pure (align_even (from_int w))
 
   let address = address_in_range zero w0xFFFC (* Exclude last address *)
   let memory = array_size (pure limit) byte
@@ -24,9 +25,9 @@ module Memory = struct
      a failing test, no idea why. *)
 
   let enclave_range a b =
-    address_in_range a (b - from_int 1) >>= fun enclave_start ->
-    address_in_range (enclave_start + from_int 1) b >|= fun enclave_end ->
-    { enclave_start; enclave_end }
+    let* enclave_start = address_in_range a (b - from_int 1) in
+    let* enclave_end = address_in_range (enclave_start + from_int 1) b in
+    pure { enclave_start; enclave_end }
 
   let address_out_of_enclave data code =
     oneof
@@ -47,8 +48,8 @@ module Memory = struct
       enclave_range ((last_valid_address lsr 1) + from_int 1) last_valid_address
     in
     (* Avoid the last address *)
-    oneof [ pair low high; pair high low ] >>= fun (data, code) ->
-    address_out_of_enclave data code >|= fun isr -> { data; code; isr }
+    let* (data, code) = oneof [ pair low high; pair high low ] in
+    let* isr = address_out_of_enclave data code in pure { data; code; isr }
   (* WARNING: ISR is set to always zero in these examples! *)
 
   let unprotected_address l =
@@ -75,14 +76,13 @@ module Register = struct
 
   let sr_mask = oneofl [ mask_c; mask_gie; mask_n; mask_v; mask_z ]
 
+  (* Avoid settings GIE without context on the mode *)
   let sr_register_value =
-    QCheck2.Gen.bool >>= fun c ->
-    QCheck2.Gen.bool >>= fun gie ->
-    QCheck2.Gen.bool >>= fun n ->
-    QCheck2.Gen.bool >>= fun v ->
-    QCheck2.Gen.bool >>= fun z ->
+    let* c = QCheck2.Gen.bool in
+    let* n = QCheck2.Gen.bool in
+    let* v = QCheck2.Gen.bool in
+    let* z = QCheck2.Gen.bool in
     pure ((if c then mask_c else zero)
-      lor (if gie then mask_gie else zero)
       lor (if n then mask_n else zero)
       lor (if v then mask_v else zero)
       lor (if z then mask_z else zero))
@@ -103,42 +103,46 @@ module Register = struct
     oneofl [ R3; R4; R5; R6; R7; R8; R9; R10; R11; R12; R13; R14; R15 ]
 
   let any_register_file =
-    Memory.address >>= fun pc ->
-    Memory.address >>= fun sp ->
-    Memory.word >>= fun sr ->
-    Memory.word >>= fun r3 ->
-    Memory.word >>= fun r4 ->
-    Memory.word >>= fun r5 ->
-    Memory.word >>= fun r6 ->
-    Memory.word >>= fun r7 ->
-    Memory.word >>= fun r8 ->
-    Memory.word >>= fun r9 ->
-    Memory.word >>= fun r10 ->
-    Memory.word >>= fun r11 ->
-    Memory.word >>= fun r12 ->
-    Memory.word >>= fun r13 ->
-    Memory.word >>= fun r14 ->
-    Memory.word >>= fun r15 ->
+    let* pc = Memory.address in
+    let* sp = Memory.address in
+    let* sr = Memory.word in
+    let* r3 = Memory.word in
+    let* r4 = Memory.word in
+    let* r5 = Memory.word in
+    let* r6 = Memory.word in
+    let* r7 = Memory.word in
+    let* r8 = Memory.word in
+    let* r9 = Memory.word in
+    let* r10 = Memory.word in
+    let* r11 = Memory.word in
+    let* r12 = Memory.word in
+    let* r13 = Memory.word in
+    let* r14 = Memory.word in
+    let* r15 = Memory.word in
     pure
       { pc; sp; sr; r3; r4; r5; r6; r7; r8; r9; r10; r11; r12; r13; r14; r15 }
 
   let register_file_protected layout =
-    Memory.protected_address layout >>= fun pc ->
-    Memory.unprotected_address layout >>= fun sp -> (* SP always points to an unprotected location *)
-    sr_register_value >>= fun sr ->
-    any_register_file >|= fun r -> { r with pc; sp; sr }
+    let* pc = Memory.protected_address layout in
+    (* SP always points to an unprotected location *)
+    let* sp = Memory.unprotected_address layout in
+    let* sr = sr_register_value in
+    let* r = any_register_file in
+    pure { r with pc; sp; sr }
 
   let register_file_unprotected layout =
-    Memory.unprotected_address layout >>= fun pc ->
-    Memory.unprotected_address layout >>= fun sp ->
-    sr_register_value >>= fun sr ->
-    any_register_file >|= fun r -> { r with pc; sp; sr }
+    let* pc = Memory.unprotected_address layout in
+    let* sp = Memory.unprotected_address layout in
+    let* sr = sr_register_value in
+    let* r = any_register_file in
+    pure { r with pc; sp; sr }
 end
 
 module Configuration = struct
   open QCheck2.Gen
   open Lis2022.Memory
   open Lis2022.Io_device
+  open Lis2022.Register_file
   open Lis2022.Configuration
 
   let default_memory = memory_init ()
@@ -147,21 +151,38 @@ module Configuration = struct
   let default_io_device = default_io_device
   (* Careful! Global because of efficiency, should not be overwritten by tests *)
 
-  let configuration_minimal register_file_gen pc_old_gen =
-    Memory.layout >>= fun layout ->
-    register_file_gen layout >>= fun r ->
-    pc_old_gen layout >|= fun pc_old ->
-    {
+  let t_pad = 0 -- Lis2022.Ast.max_cycles
+
+  let backup layout =
+    let* pc_old = Memory.protected_address layout in
+    let* r = Register.register_file_protected layout in
+    let* t_pad = t_pad in
+    pure {r; pc_old; t_pad}
+
+  let configuration_unprotected_minimal =
+    let* layout = Memory.layout in
+    let* r = Register.register_file_unprotected layout in
+    let* pc_old = Memory.unprotected_address layout in
+    let* b = opt (backup layout) in
+    (* If the backup is Some(...) then set GIE to zero in the configuration *)
+    let set_gie_zero_if_backup = Option.fold b ~none:Fun.id ~some:(Fun.const (set_bit mask_gie false)) in
+    pure {
+      (init_configuration true layout default_io_device default_memory ()) with
+      pc_old;
+      r = {r with sr = set_gie_zero_if_backup r.sr};
+      b;
+    }
+
+  let configuration_protected_minimal =
+    let* layout = Memory.layout in
+    let* r = Register.register_file_protected layout in
+    let* pc_old = Memory.protected_address layout in
+    pure {
       (init_configuration true layout default_io_device default_memory ()) with
       pc_old;
       r;
+      b = None;
     }
-
-  let configuration_unprotected_minimal =
-    configuration_minimal Register.register_file_unprotected Memory.unprotected_address
-
-  let configuration_protected_minimal =
-      configuration_minimal Register.register_file_protected Memory.protected_address
 
   let any_configuration_minimal =
     oneof [ configuration_unprotected_minimal; configuration_protected_minimal ]
@@ -176,14 +197,14 @@ module Device = struct
   let io_state max = 1 -- max
 
   let transition_type max =
-    io_state max >>= fun s -> oneofl [ EpsilonTransition s; InterruptTransition s]
+    let* s = io_state max in oneofl [ EpsilonTransition s; InterruptTransition s]
 
   let write_transitions_max = 16
 
   let io_possibilities states write_transitions =
-    transition_type states >>= fun main_transition ->
-    opt (pair Memory.word (io_state states)) >>= fun read_transition ->
-    list_size (pure write_transitions) (io_state states) >>= fun all_write_transitions ->
+    let* main_transition = transition_type states in
+    let* read_transition = opt (pair Memory.word (io_state states)) in
+    let* all_write_transitions = list_size (pure write_transitions) (io_state states) in
     let all_words = List.map Word.from_int (List.init write_transitions succ) in
     pure {
       main_transition;
@@ -192,8 +213,8 @@ module Device = struct
     }
 
   let device states write_transitions =
-    io_state states >>= fun init_state ->
-    list_size (pure states) (io_possibilities states write_transitions) >>= fun all_transitions ->
+    let* init_state = io_state states in
+    let* all_transitions = list_size (pure states) (io_possibilities states write_transitions) in
     let states = List.init states succ in
     pure {
      states;
@@ -211,7 +232,8 @@ module Device = struct
           write_transitions = Fun.const None
         })
 
-  (* Linear automaton in which:
+  (*
+    Linear automaton in which:
       - each transition is epsilon except for one at time `when_interrupt`
       - each transition points to the next state
       - always outputs the elapsed time from the start as read transition
@@ -219,9 +241,9 @@ module Device = struct
   let security_relevant_device states when_interrupt =
     let states = List.init states succ in
     pure {
-     states;
-     init_state = 0;
-     delta = fun s -> List.assoc s (List.combine states (security_relevant_delta_transitions states when_interrupt))
+      states;
+      init_state = 0;
+      delta = fun s -> List.assoc s (List.combine states (security_relevant_delta_transitions states when_interrupt))
     }
 
 end
