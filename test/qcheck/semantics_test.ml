@@ -174,6 +174,45 @@ let test_j0_um_no =
     ~name:"J0 (UM) jumps if the flags is true"
     ~count:50 gen property
 
+(* IN  read from the device
+   OUT write from the device
+*)
+
+(** Try to read the content in the register r*)
+let test_in_device =
+  let property (c, r, w) =
+    let touch_last_word_addr =
+      is_touching_last_word_address (register_get c.r r)
+    in
+    (* Generate a transition to read somethings*)
+    let _ = (io_device_choices c).write_transitions w in
+    let good = step c (IN r) |> is_ok in
+    (not touch_last_word_addr) || (good && w == register_get c.r r)
+  in
+  let gen =
+    triple Configuration.configuration_unprotected_minimal Register.gp_register
+      Memory.word
+  in
+  QCheck2.Test.make ~name:"IN perform a read from the device" ~count:50 gen
+    property
+
+(*
+let test_out_device =
+  let property (c, r, w) =
+    let touch_last_word_add =
+      is_touching_last_word_address (register_get c.r r)
+    in
+    (* generate a transition to read somethings*)
+    let good = step c (OUT r) |> is_ok in
+    (not touch_last_word_add) || good
+  in
+  let gen =
+    triple Configuration.configuration_unprotected_minimal Register.gp_register
+      Memory.word
+  in
+  QCheck2.Test.make ~name:"OUT perform a read form the device" ~count:50 gen
+    property
+*)
 let tests =
   [
     test_operation "ADD" Word.Overflow.(+) (fun (r1,r2) -> ADD(r1, r2));
@@ -186,4 +225,5 @@ let tests =
     test_load_um;
     test_j0_um_yes;
     test_j0_um_no;
+    test_in_device;
   ]
