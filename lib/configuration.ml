@@ -110,7 +110,9 @@ let rec mac_valid c i =
       | _ -> true (* HALT should always be executable *))
 
 let advance_configuration k c =
-  let io_state, current_clock, arrival_time = advance c.io_device k (c.io_state, c.current_clock, c.arrival_time) in
+  let io_state, current_clock, arrival_time =
+    advance c.io_device k (c.io_state, c.current_clock, c.arrival_time)
+  in
   c.io_state <- io_state;
   c.current_clock <- current_clock;
   c.arrival_time <- arrival_time

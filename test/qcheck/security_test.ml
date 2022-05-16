@@ -26,6 +26,4 @@ let test_not =
     ~count:50 gen property
 *)
 
-let tests =
-  [ 
-  ]
+let tests = []

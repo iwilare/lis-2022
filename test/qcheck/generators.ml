@@ -48,8 +48,9 @@ module Memory = struct
       enclave_range ((last_valid_address lsr 1) + from_int 1) last_valid_address
     in
     (* Avoid the last address *)
-    let* (data, code) = oneof [ pair low high; pair high low ] in
-    let* isr = address_out_of_enclave data code in pure { data; code; isr }
+    let* data, code = oneof [ pair low high; pair high low ] in
+    let* isr = address_out_of_enclave data code in
+    pure { data; code; isr }
   (* WARNING: ISR is set to always zero in these examples! *)
 
   let unprotected_address l =
@@ -82,10 +83,11 @@ module Register = struct
     let* n = QCheck2.Gen.bool in
     let* v = QCheck2.Gen.bool in
     let* z = QCheck2.Gen.bool in
-    pure ((if c then mask_c else zero)
+    pure
+      ((if c then mask_c else zero)
       lor (if n then mask_n else zero)
       lor (if v then mask_v else zero)
-      lor (if z then mask_z else zero))
+      lor if z then mask_z else zero)
 
   (* Any register *)
   let any_register =
@@ -157,35 +159,42 @@ module Configuration = struct
     let* pc_old = Memory.protected_address layout in
     let* r = Register.register_file_protected layout in
     let* t_pad = t_pad in
-    pure {r; pc_old; t_pad}
+    pure { r; pc_old; t_pad }
 
-  let configuration_unprotected_minimal ?io_device:(io_device = default_io_device) () =
+  let configuration_unprotected_minimal ?(io_device = default_io_device) () =
     let* layout = Memory.layout in
     let* r = Register.register_file_unprotected layout in
     let* pc_old = Memory.unprotected_address layout in
     let* b = opt (backup layout) in
     (* If the backup is Some(...) then set GIE to zero in the configuration *)
-    let set_gie_zero_if_backup = Option.fold b ~none:Fun.id ~some:(Fun.const (set_bit mask_gie false)) in
-    pure {
-      (init_configuration true layout io_device default_memory ()) with
-      pc_old;
-      r = {r with sr = set_gie_zero_if_backup r.sr};
-      b;
-    }
+    let set_gie_zero_if_backup =
+      Option.fold b ~none:Fun.id ~some:(Fun.const (set_bit mask_gie false))
+    in
+    pure
+      {
+        (init_configuration true layout io_device default_memory ()) with
+        pc_old;
+        r = { r with sr = set_gie_zero_if_backup r.sr };
+        b;
+      }
 
-  let configuration_protected_minimal ?io_device:(io_device = default_io_device) () =
+  let configuration_protected_minimal ?(io_device = default_io_device) () =
     let* layout = Memory.layout in
     let* r = Register.register_file_protected layout in
     let* pc_old = Memory.protected_address layout in
-    pure {
-      (init_configuration true layout io_device default_memory ()) with
-      pc_old;
-      r;
-      b = None;
-    }
+    pure
+      {
+        (init_configuration true layout io_device default_memory ()) with
+        pc_old;
+        r;
+        b = None;
+      }
 
   let any_configuration_minimal =
-    oneof [ configuration_unprotected_minimal (); configuration_protected_minimal () ]
+    oneof
+      [
+        configuration_unprotected_minimal (); configuration_protected_minimal ();
+      ]
 end
 
 module Io_device = struct
@@ -196,38 +205,48 @@ module Io_device = struct
   let io_state max = 1 -- max
 
   let transition_type max =
-    let* s = io_state max in oneofl [ EpsilonTransition s; InterruptTransition s]
+    let* s = io_state max in
+    oneofl [ EpsilonTransition s; InterruptTransition s ]
 
   let io_possibilities states write_transitions =
     let* main_transition = transition_type states in
     let* read_transition = opt (pair Memory.word (io_state states)) in
-    let* all_write_transitions = list_size (pure write_transitions) (io_state states) in
+    let* all_write_transitions =
+      list_size (pure write_transitions) (io_state states)
+    in
     let all_words = List.map Word.from_int (List.init write_transitions succ) in
-    pure {
-      main_transition;
-      read_transition;
-      write_transitions = fun s -> List.assoc_opt s (List.combine all_words all_write_transitions)
-    }
+    pure
+      {
+        main_transition;
+        read_transition;
+        write_transitions =
+          (fun s ->
+            List.assoc_opt s (List.combine all_words all_write_transitions));
+      }
 
   let device states write_transitions =
     let* init_state = io_state states in
-    let* all_transitions = list_size (pure states) (io_possibilities states write_transitions) in
+    let* all_transitions =
+      list_size (pure states) (io_possibilities states write_transitions)
+    in
     let states = List.init states succ in
-    pure {
-     states;
-     init_state;
-     delta = fun s -> List.assoc s (List.combine states all_transitions)
-    }
+    pure
+      {
+        states;
+        init_state;
+        delta = (fun s -> List.assoc s (List.combine states all_transitions));
+      }
 
   let security_relevant_delta_transitions states when_interrupt =
-    states
-      |> List.map succ
-      |> List.mapi (fun i next_state ->
-        {
-          main_transition = if i == when_interrupt then InterruptTransition next_state else EpsilonTransition next_state;
-          read_transition = Some(Word.from_int i, next_state);
-          write_transitions = Fun.const None
-        })
+    states |> List.map succ
+    |> List.mapi (fun i next_state ->
+           {
+             main_transition =
+               (if i == when_interrupt then InterruptTransition next_state
+               else EpsilonTransition next_state);
+             read_transition = Some (Word.from_int i, next_state);
+             write_transitions = Fun.const None;
+           })
 
   (*
     Linear automaton in which:
@@ -237,10 +256,44 @@ module Io_device = struct
   *)
   let security_relevant_device states when_interrupt =
     let states = List.init states succ in
-    pure {
-      states;
-      init_state = 0;
-      delta = fun s -> List.assoc s (List.combine states (security_relevant_delta_transitions states when_interrupt))
-    }
+    pure
+      {
+        states;
+        init_state = 0;
+        delta =
+          (fun s ->
+            List.assoc s
+              (List.combine states
+                 (security_relevant_delta_transitions states when_interrupt)));
+      }
+end
 
+module Instructions = struct
+  open Lis2022.Ast
+  open QCheck2.Gen
+
+  let reg1_instr =
+    let* r = Register.gp_register in
+    oneofl [ IN r; OUT r; JMP r; JZ r; NOT r ]
+
+  let reg2_instr =
+    let* r1 = Register.gp_register in
+    let* r2 = Register.gp_register in
+    oneofl
+      [
+        MOV (r1, r2);
+        MOV_LOAD (r1, r2);
+        MOV_STORE (r1, r2);
+        AND (r1, r2);
+        ADD (r1, r2);
+        SUB (r1, r2);
+        CMP (r1, r2);
+      ]
+
+  let move_immediate =
+    map2 (fun i r -> MOV_IMM (i, r)) Memory.word Register.gp_register
+
+  let random_inst =
+    oneof
+      [ pure HLT; pure NOP; pure RETI; reg1_instr; reg2_instr; move_immediate ]
 end
