@@ -21,5 +21,23 @@ let test_word_set_is_involutive =
   QCheck2.Test.make
     ~name:"Memory set memory get of words returns the initial value" ~count:20000
     gen property
+    
+let test_decompose_compose =
+  let property w =
+    Word.decompose_bytes w |> fun (l, h) -> Word.compose_bytes l h = w
+  in
+  let gen = word in
+  QCheck2.Test.make
+    ~name:"Decompose words is the inverse of compose words" ~count:20000
+    gen property
 
-let tests = [ test_byte_set_is_involutive; test_word_set_is_involutive ]
+let test_compose_decompose =
+  let property (l,h) =
+    Word.compose_bytes l h |> Word.decompose_bytes = (l, h)
+  in
+  let gen = QCheck2.Gen.pair byte byte in
+  QCheck2.Test.make
+    ~name:"Decompose words is the inverse of compose words" ~count:20000
+    gen property
+
+let tests = [ test_byte_set_is_involutive; test_word_set_is_involutive; test_compose_decompose; test_decompose_compose]

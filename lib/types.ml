@@ -20,8 +20,9 @@ module Byte = struct
   let ( lsl ) x y = (x lsl y) land max_value
   let ( lsr ) = ( lsr )
   let lnot x = lnot x land max_value
-  let show = Printf.sprintf "%5d"
   let to_int = Fun.id
+  let show = Printf.sprintf "%5d"
+  let show_hex = Printf.sprintf "%#2X"
 
   module Overflow = struct
     let is_overflow v = not (0 <= v && v <= max_value)

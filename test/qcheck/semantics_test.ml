@@ -184,7 +184,7 @@ let test_jz_um z_case =
         let unchanged_r = after_r = before_r in
         unchanged_r &&
           (if z_case then
-            flag_z c ==> Word.(c'.r.pc = c.r.pc)
+            flag_z c ==> Word.(c'.r.pc = before_r)
           else
             not (flag_z c) ==> Word.(c'.r.pc = c.r.pc + Word.from_int (size i))))
       ~predicate_halt: false

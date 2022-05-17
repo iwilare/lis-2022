@@ -19,7 +19,9 @@
  (name lis2022)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune)
+ (depends
+ (ocaml (>="4.13.0"))
+  dune)
  (tags
   (topics "to describe" your project)))
 

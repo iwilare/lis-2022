@@ -18,10 +18,7 @@ let (pure : 'a -> ('a, 'io_device) m) = fun v -> fun c -> `ok (v,c)
 
 let (let*) = (>>=)
 
-
-let (>>) a b = a >>= fun _ -> b
-let (<$>) f m = m >>= fun v -> pure (f v)
-let (<*>) f m = f >>= fun f -> m >>= fun v -> pure (f v)
+let (>>) a b = a >>= fun () -> b
 
 (* Monadic operations *)
 

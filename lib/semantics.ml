@@ -97,7 +97,8 @@ module Semantics (I : Interrupt_logic) = struct
         rget r1 >>= mget >>= rset r2 >>
         epilogue
     | MOV_STORE (r1, r2) ->
-        mset <$> rget r2 <*> rget r1 >>
+        let* v2 = rget r2 in
+        rget r1 >>= mset v2 >>
         epilogue
     | MOV (r1, r2) ->
         rget r1 >>= rset r2 >>

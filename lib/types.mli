@@ -2,6 +2,8 @@ open Native
 
 module Byte : sig
   include Native
+  
+  val show_hex : t -> string
 end
 
 module Word : sig

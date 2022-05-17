@@ -28,6 +28,23 @@ let memory_set (a : address) (w : word) (m : memory) =
       m |> memory_set_byte a l
         |> memory_set_byte Word.(a + from_int 1) h
 
+let rec memory_set_words (a : address) (ws : word list) (m : memory) =
+  match ws with
+  | [] -> m
+  | w::ws -> memory_set_words Word.(a + from_int 2) ws (memory_set a w m)
+
+let rec memory_get_words (a : address) (k : int) (m : memory) : word list =
+  match k with
+  | 0 -> []
+  | k -> memory_get a m :: memory_get_words Word.(a + from_int 2) (k - 1) m
+
+let string_of_memory m =
+  m |> List.sort (fun (a,_) (b,_) -> Word.to_int a - Word.to_int b)
+    |> List.map (fun (a,b) -> Word.show_address a ^ " -> " ^ Byte.show_hex b)
+    |> String.concat "\n"
+
+(* Memory logic *)
+
 let align_even x = Word.(x land w0xFFFE)
 
 let is_touching_last_word_address (addr : word) =
