@@ -134,6 +134,6 @@ let fetch_and_decode addr mem =
 
 let put_instructions_in_memory start_point mem instructions= 
 instructions
-|> List.map Lis2022.Instructions.encode
+|> List.map encode
 |> List.map fst 
 |> List.iteri (fun i inst -> memory_set mem Word.(start_point + from_int i) inst )
