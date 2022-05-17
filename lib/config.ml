@@ -14,24 +14,24 @@ type backup = {
   t_pad : time; (* Remaining padding time *)
 }
 
-type 'io_state configuration = {
+type 'io_state config = {
   (* Memory layout *)
   layout : memory_layout;
   (* Global device *)
   io_device : 'io_state io_device;
   (* Timing state *)
-  mutable io_state : 'io_state;
-  mutable current_clock : time;
-  mutable arrival_time : time option;
+  io_state : 'io_state;
+  current_clock : time;
+  arrival_time : time option;
   (* Old program counter state *)
-  mutable pc_old : address;
+  pc_old : address;
   (* Main state of the CPU *)
   m : memory;
   r : register_file;
-  mutable b : backup option;
+  b : backup option;
 }
 
-let string_of_configuration c =
+let string_of_config c =
   "Layout: " ^ string_of_layout c.layout ^ "\nClock: "
   ^ string_of_time c.current_clock
   ^ "\tIO state: " ^ string_of_int c.io_state ^ "\tArrival time: "
@@ -46,7 +46,7 @@ let string_of_configuration c =
   ^ "\n"
   ^ string_of_register_file_gp c.r
 
-let init_configuration layout io_device memory () =
+let init_config layout io_device memory =
   {
     io_device;
     layout;
@@ -55,26 +55,26 @@ let init_configuration layout io_device memory () =
     arrival_time = None;
     pc_old = w0xFFFE;
     m = memory;
-    r = register_file_init memory ();
+    r = register_file_init memory;
     b = None;
   }
 
-let raise_exception extra_cycles c =
-  c.current_clock <- c.current_clock + extra_cycles;
-  c.arrival_time <- None;
-  c.pc_old <- w0xFFFE;
-  c.b <- None;
-
-  copy_register_file c.r (register_file_0 ());
-  c.r.pc <- memory_get c.m w0xFFFE
+let exception_config extra_cycles c =
+  { c with
+     current_clock = c.current_clock + extra_cycles;
+     arrival_time = None;
+     pc_old = w0xFFFE;
+     b = None;
+     r = {register_file_0 with pc = memory_get w0xFFFE c.m};
+  }
 
 let cpu_mode c = cpu_mode_of_address c.layout c.r.pc
 let io_device_choices c = List.assoc c.io_state c.io_device.delta
 let flag_gie c = get_bit mask_gie c.r.sr
 let flag_z c = get_bit mask_z c.r.sr
 
-let rec mac_valid c i =
-  let rget = register_get c.r in
+let rec mac_valid i c =
+  let rget r = register_get r c.r in
   let pc_old = c.pc_old in
   let pc = c.r.pc in
   let sp = c.r.sp in
@@ -82,7 +82,7 @@ let rec mac_valid c i =
   | Some _ ->
       (match i with
       | RETI -> true
-      | _ -> mac_valid { c with b = None } i && not (flag_gie c))
+      | _ -> mac_valid i { c with b = None } && not (flag_gie c))
       && not (is_enclave_entry_point c.layout pc)
   | None -> (
       (* Check all current instruction bytes *)
@@ -103,11 +103,3 @@ let rec mac_valid c i =
           && mac_word c.layout pc R Word.(sp + from_int 1)
           (* Check that we can read PC and SP from the stack *)
       | _ -> true (* HALT should always be executable *))
-
-let advance_configuration k c =
-  let io_state, current_clock, arrival_time =
-    advance c.io_device k (c.io_state, c.current_clock, c.arrival_time)
-  in
-  c.io_state <- io_state;
-  c.current_clock <- current_clock;
-  c.arrival_time <- arrival_time

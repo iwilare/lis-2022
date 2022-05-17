@@ -10,22 +10,22 @@ let mask_z : word = Word.from_int 0b01000000
 let mask_c : word = Word.from_int 0b10000000
 
 type register_file = {
-  mutable pc : word;
-  mutable sp : word;
-  mutable sr : word;
-  mutable r3 : word;
-  mutable r4 : word;
-  mutable r5 : word;
-  mutable r6 : word;
-  mutable r7 : word;
-  mutable r8 : word;
-  mutable r9 : word;
-  mutable r10 : word;
-  mutable r11 : word;
-  mutable r12 : word;
-  mutable r13 : word;
-  mutable r14 : word;
-  mutable r15 : word;
+  pc : word;
+  sp : word;
+  sr : word;
+  r3 : word;
+  r4 : word;
+  r5 : word;
+  r6 : word;
+  r7 : word;
+  r8 : word;
+  r9 : word;
+  r10 : word;
+  r11 : word;
+  r12 : word;
+  r13 : word;
+  r14 : word;
+  r15 : word;
 }
 
 let string_of_register_file_gp r =
@@ -60,23 +60,24 @@ let string_of_register = function
   | R14 -> "R14"
   | R15 -> "R15"
 
-let register_get regs = function
-  | PC -> regs.pc
-  | SP -> regs.sp
-  | SR -> regs.sr
-  | R3 -> regs.r3
-  | R4 -> regs.r4
-  | R5 -> regs.r5
-  | R6 -> regs.r6
-  | R7 -> regs.r7
-  | R8 -> regs.r8
-  | R9 -> regs.r9
-  | R10 -> regs.r10
-  | R11 -> regs.r11
-  | R12 -> regs.r12
-  | R13 -> regs.r13
-  | R14 -> regs.r14
-  | R15 -> regs.r15
+let register_get reg r =
+  match reg with
+  | PC -> r.pc
+  | SP -> r.sp
+  | SR -> r.sr
+  | R3 -> r.r3
+  | R4 -> r.r4
+  | R5 -> r.r5
+  | R6 -> r.r6
+  | R7 -> r.r7
+  | R8 -> r.r8
+  | R9 -> r.r9
+  | R10 -> r.r10
+  | R11 -> r.r11
+  | R12 -> r.r12
+  | R13 -> r.r13
+  | R14 -> r.r14
+  | R15 -> r.r15
 
 let get_bit mask x = Word.(x land mask > zero)
 
@@ -96,49 +97,31 @@ let string_of_sr_flags sr =
   ^ " C="
   ^ string_of_bool (get_bit mask_c sr)
 
-let register_set layout regs r w =
-  match r with
-  | PC -> regs.pc <- align_even w
-  | SP -> regs.sp <- align_even w
+let register_set layout reg w r =
+  match reg with
+  | PC -> {r with pc = align_even w }
+  | SP -> {r with sp = align_even w }
   | SR -> (
-      match cpu_mode_of_address layout regs.pc with
-      | Some PM -> regs.sr <- w |> set_bit mask_gie (get_bit mask_gie regs.sr)
+      match cpu_mode_of_address layout r.pc with
+      | Some PM -> {r with sr = w |> set_bit mask_gie (get_bit mask_gie r.sr) }
       | _ ->
           (* Remember Some(UM) *)
-          regs.sr <- w)
-  | R3 -> regs.r3 <- w
-  | R4 -> regs.r4 <- w
-  | R5 -> regs.r5 <- w
-  | R6 -> regs.r6 <- w
-  | R7 -> regs.r7 <- w
-  | R8 -> regs.r8 <- w
-  | R9 -> regs.r9 <- w
-  | R10 -> regs.r10 <- w
-  | R11 -> regs.r11 <- w
-  | R12 -> regs.r12 <- w
-  | R13 -> regs.r13 <- w
-  | R14 -> regs.r14 <- w
-  | R15 -> regs.r15 <- w
+          {r with sr = w})
+  | R3 -> {r with r3 = w}
+  | R4 -> {r with r4 = w}
+  | R5 -> {r with r5 = w}
+  | R6 -> {r with r6 = w}
+  | R7 -> {r with r7 = w}
+  | R8 -> {r with r8 = w}
+  | R9 -> {r with r9 = w}
+  | R10 -> {r with r10 = w}
+  | R11 -> {r with r11 = w}
+  | R12 -> {r with r12 = w}
+  | R13 -> {r with r13 = w}
+  | R14 -> {r with r14 = w}
+  | R15 -> {r with r15 = w}
 
-let copy_register_file r1 r2 =
-  r1.pc <- r2.pc;
-  r1.sp <- r2.sp;
-  r1.sr <- r2.sr;
-  r1.r3 <- r2.r3;
-  r1.r4 <- r2.r4;
-  r1.r5 <- r2.r5;
-  r1.r6 <- r2.r6;
-  r1.r7 <- r2.r7;
-  r1.r8 <- r2.r8;
-  r1.r9 <- r2.r9;
-  r1.r10 <- r2.r10;
-  r1.r11 <- r2.r11;
-  r1.r12 <- r2.r12;
-  r1.r13 <- r2.r13;
-  r1.r14 <- r2.r14;
-  r1.r15 <- r2.r15
-
-let register_file_0 () =
+let register_file_0 =
   Word.
     {
       pc = zero;
@@ -159,9 +142,9 @@ let register_file_0 () =
       r15 = zero;
     }
 
-let register_file_init m () =
+let register_file_init m =
   {
-    pc = memory_get m (Word.from_int 0xFFFE);
+    pc = memory_get w0xFFFE m;
     sp = zero;
     sr = mask_gie;
     r3 = zero;

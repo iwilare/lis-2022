@@ -1,26 +1,32 @@
 open Types
 
-type memory = byte Array.t
+type memory = (word * byte) list
 
 let w0xFFFF = Word.from_int 0xFFFF (* Last byte *)
 let w0xFFFE = Word.from_int 0xFFFE (* Last word; also, parity bit mask *)
 let w0xFFFC = Word.from_int 0xFFFC (* Last valid word address *)
 let limit = 65536 (* Memory size *)
-let memory_init () = Array.make limit Byte.zero
-let memory_get_byte m (a : address) = Array.get m (Word.to_int a)
-let memory_set_byte m (a : address) (b : byte) = Array.set m (Word.to_int a) b
+let memory_init () = []
+let memory_get_byte (a : address) (m : memory) =
+  if Word.zero <= a && a <= w0xFFFF then
+    Option.value (List.assoc_opt a m) ~default:Byte.zero
+  else
+    failwith "Invalid memory access"
 
-let memory_get m a =
+let memory_set_byte (a : address) (b : byte) (m : memory) =
+  m |> List.remove_assoc a
+    |> List.cons (a, b)
+
+let memory_get (a : address) (m : memory) =
   Word.(
     compose_bytes
-      (Array.get m (to_int (a + from_int 1)))
-      (Array.get m (to_int a)))
+      (memory_get_byte (a + from_int 1) m))
+      (memory_get_byte a m)
 
-let memory_set m a w =
-  Word.(
-    decompose_bytes w |> fun (h, l) ->
-    l |> Array.set m (to_int a);
-    h |> Array.set m (to_int (a + from_int 1)))
+let memory_set (a : address) (w : word) (m : memory) =
+    Word.decompose_bytes w |> fun (h, l) ->
+      m |> memory_set_byte a l
+        |> memory_set_byte Word.(a + from_int 1) h
 
 let align_even x = Word.(x land w0xFFFE)
 

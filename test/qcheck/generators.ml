@@ -20,7 +20,7 @@ module Memory = struct
     pure (align_even (from_int w))
 
   let address = address_in_range zero w0xFFFC (* Exclude last address *)
-  let memory = array_size (pure limit) byte
+  let (memory : memory QCheck2.Gen.t) = pure [] (*array_size (pure limit) byte*)
   (* TODO: fix this. This causes QCheck to hang when generating a memory during
      a failing test, no idea why. *)
 
@@ -140,18 +140,16 @@ module Register = struct
     pure { r with pc; sp; sr }
 end
 
-module Configuration = struct
+module Config = struct
   open QCheck2.Gen
   open Lis2022.Memory
   open Lis2022.Io_device
   open Lis2022.Register_file
-  open Lis2022.Configuration
+  open Lis2022.Config
 
   let default_memory = memory_init ()
-  (* Careful! Global because of efficiency, should not be overwritten by tests *)
 
   let default_io_device = default_io_device
-  (* Careful! Global because of efficiency, should not be overwritten by tests *)
 
   let t_pad = 0 -- Lis2022.Ast.max_cycles
 
@@ -161,39 +159,39 @@ module Configuration = struct
     let* t_pad = t_pad in
     pure { r; pc_old; t_pad }
 
-  let configuration_unprotected_minimal ?(io_device = default_io_device) () =
+  let config_unprotected_minimal ?(io_device = default_io_device) () =
     let* layout = Memory.layout in
     let* r = Register.register_file_unprotected layout in
     let* pc_old = Memory.unprotected_address layout in
     let* b = opt (backup layout) in
-    (* If the backup is Some(...) then set GIE to zero in the configuration *)
+    (* If the backup is Some(...) then set GIE to zero in the config *)
     let set_gie_zero_if_backup =
       Option.fold b ~none:Fun.id ~some:(Fun.const (set_bit mask_gie false))
     in
     pure
       {
-        (init_configuration layout io_device default_memory ()) with
+        (init_config layout io_device default_memory) with
         pc_old;
         r = { r with sr = set_gie_zero_if_backup r.sr };
         b;
       }
 
-  let configuration_protected_minimal ?(io_device = default_io_device) () =
+  let config_protected_minimal ?(io_device = default_io_device) () =
     let* layout = Memory.layout in
     let* r = Register.register_file_protected layout in
     let* pc_old = Memory.protected_address layout in
     pure
       {
-        (init_configuration layout io_device default_memory ()) with
+        (init_config layout io_device default_memory) with
         pc_old;
         r;
         b = None;
       }
 
-  let any_configuration_minimal =
+  let any_config_minimal =
     oneof
       [
-        configuration_unprotected_minimal (); configuration_protected_minimal ();
+        config_unprotected_minimal (); config_protected_minimal ();
       ]
 end
 
