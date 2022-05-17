@@ -62,3 +62,39 @@ let cycles = function
   | CMP (_, _) -> 1
 
 let max_cycles = 6
+
+let string_of_register = function
+| PC -> "PC"
+| SP -> "SP"
+| SR -> "SR"
+| R3 -> "R3"
+| R4 -> "R4"
+| R5 -> "R5"
+| R6 -> "R6"
+| R7 -> "R7"
+| R8 -> "R8"
+| R9 -> "R9"
+| R10 -> "R10"
+| R11 -> "R11"
+| R12 -> "R12"
+| R13 -> "R13"
+| R14 -> "R14"
+| R15 -> "R15"
+
+let string_of_instr = function  
+| NOP -> "NOP"
+| RETI -> "RETI"
+| HLT -> "HLT"
+| IN _ -> "IN"
+| OUT r -> "OUT" ^ string_of_register r
+| JMP r -> "JMP" ^ string_of_register r
+| JZ r -> "JZ" ^ string_of_register r
+| MOV (r1, r2) -> "MOV" ^ string_of_register r1 ^ " " ^ string_of_register r2
+| MOV_LOAD (r1, r2) -> "MOV_LOAD" ^ string_of_register r1 ^ " " ^ string_of_register r2
+| MOV_STORE (r1, r2) -> "MOV_STORE" ^ string_of_register r1 ^ " " ^ string_of_register r2
+| MOV_IMM (imm, r) -> "MOV_IMM" ^ Word.show imm ^ " " ^ string_of_register r
+| NOT r -> "NOT" ^ string_of_register r
+| ADD (r1, r2) -> "ADD" ^ string_of_register r1 ^ " " ^ string_of_register r2
+| SUB (r1, r2) -> "SUB" ^ string_of_register r1 ^ " " ^ string_of_register r2
+| AND (r1, r2) -> "AND" ^ string_of_register r1 ^ " " ^ string_of_register r2
+| CMP (r1, r2) -> "CMP" ^ string_of_register r1 ^ " " ^ string_of_register r2

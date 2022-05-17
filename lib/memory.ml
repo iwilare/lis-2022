@@ -1,6 +1,6 @@
 open Types
 
-type memory = (word * byte) list
+type memory = (address * byte) list
 
 let w0xFFFF = Word.from_int 0xFFFF (* Last byte *)
 let w0xFFFE = Word.from_int 0xFFFE (* Last word; also, parity bit mask *)
@@ -29,9 +29,6 @@ let memory_set (a : address) (w : word) (m : memory) =
         |> memory_set_byte Word.(a + from_int 1) h
 
 let align_even x = Word.(x land w0xFFFE)
-
-let cycles_per_access =
-  3 (* TODO: check if this is consistent with interrupt logic in UM case *)
 
 let is_touching_last_word_address (addr : word) =
   addr = w0xFFFE || addr = w0xFFFF

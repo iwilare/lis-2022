@@ -12,7 +12,7 @@ let ( (>>=) : ('a, 'io_device) m -> ('a -> ('b, 'io_device) m) -> ('b, 'io_devic
   | `halt e -> `halt e
   | `ok (a, c') -> mf a c'
 
-  let (pure : 'a -> ('a, 'io_device) m) = fun v -> fun c -> `ok (v,c)
+let (pure : 'a -> ('a, 'io_device) m) = fun v -> fun c -> `ok (v,c)
 
 let (let*) = (>>=)
 let (>>) a b = a >>= fun _ -> b
@@ -38,12 +38,12 @@ let mset a w = modify (fun c -> {c with m = memory_set a w c.m})
 let rget r = gets (fun c -> register_get r c.r)
 let rset r w = modify (fun c -> {c with r = register_set c.layout r w c.r})
 let rmodify r f = modify (fun c -> {c with r = register_set c.layout r (f (register_get r c.r)) c.r})
+
 let set_backup b = modify (fun c -> {c with b})
 let set_pc_old pc_old = modify (fun c -> {c with pc_old})
+let set_io_state io_state = modify (fun c -> {c with io_state})
 
 let raise_exception k = modify (exception_config k)
-
-let set_io_state io_state = modify (fun c -> {c with io_state})
 
 let increment_current_clock () = modify (fun c -> {c with current_clock = c.current_clock + 1})
 

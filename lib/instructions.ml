@@ -1,6 +1,6 @@
 open Ast
 open Types
-
+open Memory
 let reg_encode r =
   let rval =
     match r with
@@ -123,3 +123,18 @@ let decode v =
   | w1, Some w2 when w1 land from_int 0xF0F0 = from_int 0x4030 ->
       Some (MOV_IMM (w2, get_reg w1))
   | _ -> None
+
+let fetch_and_decode addr mem = 
+  match memory_get mem addr with 
+  | w when Word.(w land from_int 0xF0F0 = from_int 0xE030) ||  Word.(w land from_int 0xF0F0 = from_int 0x4030) -> 
+    Word.(decode (w, memory_get mem addr+from_int 1 |> Option.some))
+  | w  -> decode (w, None)
+
+
+(*
+let put_instructions_in_memory start_point mem instructions= 
+
+instructions
+|> List.map encode
+|> List.map fst 
+|> List.iteri (fun i inst -> memory_set mem Word.(start_point + from_int i) inst )*)
