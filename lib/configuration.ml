@@ -15,8 +15,6 @@ type backup = {
 }
 
 type 'io_state configuration = {
-  (* High vs low Sancus emulation *)
-  manage_interrupts : bool;
   (* Memory layout *)
   layout : memory_layout;
   (* Global device *)
@@ -34,9 +32,7 @@ type 'io_state configuration = {
 }
 
 let string_of_configuration c =
-  "Sancus: "
-  ^ (if c.manage_interrupts then "high" else "low")
-  ^ "\nLayout: " ^ string_of_layout c.layout ^ "\nClock: "
+  "Layout: " ^ string_of_layout c.layout ^ "\nClock: "
   ^ string_of_time c.current_clock
   ^ "\tIO state: " ^ string_of_int c.io_state ^ "\tArrival time: "
   ^ Option.fold ~none:"-" ~some:string_of_time c.arrival_time
@@ -50,9 +46,8 @@ let string_of_configuration c =
   ^ "\n"
   ^ string_of_register_file_gp c.r
 
-let init_configuration manage_interrupts layout io_device memory () =
+let init_configuration layout io_device memory () =
   {
-    manage_interrupts;
     io_device;
     layout;
     io_state = io_device.init_state;
@@ -74,7 +69,7 @@ let raise_exception extra_cycles c =
   c.r.pc <- memory_get c.m w0xFFFE
 
 let cpu_mode c = cpu_mode_of_address c.layout c.r.pc
-let io_device_choices c = c.io_device.delta c.io_state
+let io_device_choices c = List.assoc c.io_state c.io_device.delta
 let flag_gie c = get_bit mask_gie c.r.sr
 let flag_z c = get_bit mask_z c.r.sr
 

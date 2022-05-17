@@ -43,7 +43,7 @@ module Semantics (I : Interrupt_logic) = struct
             (* Advance must do one cycle less *)
             I.interrupt_logic c)
     | OUT r -> (
-        match (io_device_choices c).write_transitions (rget r) with
+        match List.assoc_opt (rget r) (io_device_choices c).write_transitions with
         | None -> `halt NoOut
         | Some d' ->
             c.io_state <- d';

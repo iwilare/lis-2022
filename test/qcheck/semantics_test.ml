@@ -8,7 +8,8 @@ open Lis2022.Io_device
 open Lis2022.Types
 open Lis2022.Semantics
 open Generators
-open Semantics (Lis2022.Interrupt_logic.Sancus_high)
+
+open Semantics (Lis2022.Interrupt_logic.Sancus_low)
 
 let is_ok x = x = `ok
 
@@ -264,7 +265,7 @@ let test_out_device =
   let property (c, r, w) =
     register_set c.layout c.r r w;
     let i = OUT r in
-    match (io_device_choices c).write_transitions (register_get c.r r) with
+    match List.assoc_opt (register_get c.r r) (io_device_choices c).write_transitions with
     | None -> step c i = `halt NoOut
     | Some d' ->
         let valid = mac_valid c i in
@@ -286,7 +287,7 @@ let test_out_device =
       Register.gp_register
       (0 -- write_transitions_max >|= Word.from_int)
   in
-  QCheck2.Test.make ~name:"OUT performs a read from the device" ~count:500 gen
+  QCheck2.Test.make ~name:"OUT performs a read from the device" ~count:10000 gen
     property ~print:(fun (c, r, w) ->
       "CONFIG: \n" ^ string_of_configuration c ^ "\n REGISTER "
       ^ string_of_register r ^ " VALUE: "

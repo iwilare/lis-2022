@@ -172,7 +172,7 @@ module Configuration = struct
     in
     pure
       {
-        (init_configuration true layout io_device default_memory ()) with
+        (init_configuration layout io_device default_memory ()) with
         pc_old;
         r = { r with sr = set_gie_zero_if_backup r.sr };
         b;
@@ -184,7 +184,7 @@ module Configuration = struct
     let* pc_old = Memory.protected_address layout in
     pure
       {
-        (init_configuration true layout io_device default_memory ()) with
+        (init_configuration layout io_device default_memory ()) with
         pc_old;
         r;
         b = None;
@@ -219,9 +219,7 @@ module Io_device = struct
       {
         main_transition;
         read_transition;
-        write_transitions =
-          (fun s ->
-            List.assoc_opt s (List.combine all_words all_write_transitions));
+        write_transitions = List.combine all_words all_write_transitions;
       }
 
   let device states write_transitions =
@@ -234,7 +232,7 @@ module Io_device = struct
       {
         states;
         init_state;
-        delta = (fun s -> List.assoc s (List.combine states all_transitions));
+        delta = List.combine states all_transitions;
       }
 
   let security_relevant_delta_transitions states when_interrupt =
@@ -245,7 +243,7 @@ module Io_device = struct
                (if i == when_interrupt then InterruptTransition next_state
                else EpsilonTransition next_state);
              read_transition = Some (Word.from_int i, next_state);
-             write_transitions = Fun.const None;
+             write_transitions = [];
            })
 
   (*
@@ -260,11 +258,7 @@ module Io_device = struct
       {
         states;
         init_state = 0;
-        delta =
-          (fun s ->
-            List.assoc s
-              (List.combine states
-                 (security_relevant_delta_transitions states when_interrupt)));
+        delta = List.combine states (security_relevant_delta_transitions states when_interrupt);
       }
 end
 
