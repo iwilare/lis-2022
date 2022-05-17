@@ -49,3 +49,18 @@ let default_io_device : int io_device =
                                               |> List.map (fun w -> (Word.from_int w, w));
                            }));
   }
+
+let string_of_io_possibilities (s, p) =
+  "State: " ^ string_of_int s ^ ", " ^
+  (match p.main_transition with
+  | EpsilonTransition d -> "ε" ^ "(" ^ string_of_int d ^ ")"
+  | InterruptTransition d -> "INT" ^ "(" ^ string_of_int d ^ ")")
+  ^ ", "
+  ^ (Option.fold p.read_transition ~none:"NO_READ" ~some:(fun (w,c) -> "READ(" ^ Word.show w ^ "->" ^  string_of_int c ^ ")"))
+  ^ ", write targets: " ^ String.concat "," (List.map (fun (w,_) -> Word.show w) p.write_transitions)
+  ^ "\n"
+
+let string_of_io_device d =
+  "States: " ^ String.concat ", " (List.map string_of_int d.states) ^
+  "\nInit state: " ^ string_of_int d.init_state ^
+  "\nDelta:\n" ^ String.concat "\n" (List.map string_of_io_possibilities d.delta)

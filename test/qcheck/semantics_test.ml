@@ -9,7 +9,7 @@ open Lis2022.Types
 open Lis2022.Semantics
 open Generators
 
-open Semantics (Lis2022.Interrupt_logic.Sancus_low)
+open Semantics (Lis2022.Interrupt_logic.Sancus_high)
 
 let is_ok x = x = `ok
 
@@ -41,7 +41,7 @@ let test_operation name operation instruction =
   in
   QCheck2.Test.make
     ~name:(name ^ " changes the first register with the correct value")
-    ~count:500
+    ~count:20000
     ~print:(fun (c, _, _) -> string_of_configuration c)
     gen property
 
@@ -61,7 +61,7 @@ let test_not =
       Register.gp_register
   in
   QCheck2.Test.make ~name:"NOT changes the register with the correct value"
-    ~count:500 gen property
+    ~count:20000 gen property
 
 let test_mov =
   let property (c, r1, r2) =
@@ -84,7 +84,7 @@ let test_mov =
   QCheck2.Test.make
     ~name:
       "MOV changes the second register with the correct value from the first"
-    ~count:500 gen property
+    ~count:20000 gen property
 
 let test_movi =
   let property (c, w, r) =
@@ -101,7 +101,7 @@ let test_movi =
   in
   QCheck2.Test.make
     ~name:"MOV_IMM changes the register with the immediate value provided"
-    ~count:500 gen property
+    ~count:20000 gen property
 
 let test_load_um =
   let property (c, r1, r2, unprotected_addr) =
@@ -126,7 +126,7 @@ let test_load_um =
     ~name:
       "MOV_LOAD (UM) changes the memory with the correct value from the \
        register"
-    ~count:500 gen property
+    ~count:20000 gen property
 
 let test_store_um =
   let property (c, r1, r2, unprotected_addr) =
@@ -154,7 +154,7 @@ let test_store_um =
     ~name:
       "MOV_STORE (UM) changes the register with the correct value from the \
        memory"
-    ~count:500 gen property
+    ~count:20000 gen property
 
 let test_j0_um_yes =
   let property (c, r, unprotected_addr) =
@@ -182,7 +182,7 @@ let test_j0_um_yes =
       (Memory.unprotected_address config.layout)
   in
   QCheck2.Test.make
-    ~name:"J0 (UM) goes to the next instruction if the flag is false" ~count:500
+    ~name:"J0 (UM) goes to the next instruction if the flag is false" ~count:20000
     gen property
 
 let test_j0_um_no =
@@ -207,7 +207,7 @@ let test_j0_um_no =
     QCheck2.Gen.triple (pure config) Register.gp_register
       (Memory.unprotected_address config.layout)
   in
-  QCheck2.Test.make ~name:"J0 (UM) jumps if the flags is true" ~count:500 gen
+  QCheck2.Test.make ~name:"J0 (UM) jumps if the flags is true" ~count:20000 gen
     property
 
 let test_jmp_um =
@@ -230,7 +230,7 @@ let test_jmp_um =
       (Memory.unprotected_address config.layout)
   in
   QCheck2.Test.make
-    ~name:"JMP (UM) sets the PC with correct value from the register" ~count:500
+    ~name:"JMP (UM) sets the PC with correct value from the register" ~count:20000
     gen property
 
 let test_in_device =
@@ -255,11 +255,15 @@ let test_in_device =
       (Configuration.configuration_unprotected_minimal () ~io_device)
       Register.gp_register
   in
-  QCheck2.Test.make ~name:"IN performs a read from the device" ~count:10000 gen
+  QCheck2.Test.make ~name:"IN performs a read from the device" ~count:20000 gen
     property ~print:(fun (c, r) ->
-      "CONFIG: \n" ^ string_of_configuration c ^ "\n REGISTER "
-      ^ string_of_register r ^ " VALUE: "
-      ^ Word.show (register_get c.r r))
+      "------------CONFIG:------------\n" ^ string_of_configuration c
+      ^ "\n------------REGISTER---------------\n"
+      ^ string_of_register r
+      ^ "\n------------VALUE---------------\n"
+      ^ Word.show (register_get c.r r)
+      ^ "\n------------IO DEVICE---------------\n"
+      ^ string_of_io_device c.io_device)
 
 let test_out_device =
   let property (c, r, w) =
@@ -287,7 +291,7 @@ let test_out_device =
       Register.gp_register
       (0 -- write_transitions_max >|= Word.from_int)
   in
-  QCheck2.Test.make ~name:"OUT performs a read from the device" ~count:10000 gen
+  QCheck2.Test.make ~name:"OUT performs a read from the device" ~count:20000 gen
     property ~print:(fun (c, r, w) ->
       "CONFIG: \n" ^ string_of_configuration c ^ "\n REGISTER "
       ^ string_of_register r ^ " VALUE: "

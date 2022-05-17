@@ -68,8 +68,13 @@ let encode (i : instr) =
     Word.((opcode i |> from_int) lor reg_encode_shift r1 lor reg_encode r2)
   in
   match i with
-  | NOP | RETI | HLT -> (opcode i |> Word.from_int, None)
-  | IN r | OUT r | JMP r | JZ r -> (encode1 i r, None)
+  | NOP
+  | RETI
+  | HLT -> (opcode i |> Word.from_int, None)
+  | IN r
+  | OUT r
+  | JMP r
+  | JZ r -> (encode1 i r, None)
   | MOV (r1, r2)
   | MOV_LOAD (r1, r2)
   | ADD (r1, r2)
@@ -118,22 +123,3 @@ let decode v =
   | w1, Some w2 when w1 land from_int 0xF0F0 = from_int 0x4030 ->
       Some (MOV_IMM (w2, get_reg w1))
   | _ -> None
-
-(*"decode_inst (w1, None) = (if w1 AND 0xFFF0 = 0x1300 then Some IRETI
-    else if w1 AND 0xFFF0 = 0x1340 then Some INOP
-    else if w1 AND 0xFFF0 = 0x1380 then Some IHLT
-    else if w1 AND 0xFF00 = 0x1400 then Some (IIN (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xFF00 = 0x1800 then Some (IOUT (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xFF00 = 0x3C00 then Some (IJMP (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xFF00 = 0x2400 then Some (IJZ (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xF000 = 0xF000 then Some (IAND (ucast (w1 AND 0x0F00 >> 8)) (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xF000 = 0x6000 then Some (IADD (ucast (w1 AND 0x0F00 >> 8)) (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xF000 = 0x7000 then Some (ISUB (ucast (w1 AND 0x0F00 >> 8)) (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xF000 = 0x9000 then Some (ICMP (ucast (w1 AND 0x0F00 >> 8)) (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xF0F0 = 0x4000 then Some (IMOV (ucast (w1 AND 0x0F00 >> 8)) (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xF0F0 = 0x4020 then Some (IMOVL (ucast (w1 AND 0x0F00 >> 8)) (ucast (w1 AND 0x000F)))
-    else if w1 AND 0xF0F0 = 0x4090 then Some (IMOVS (ucast (w1 AND 0x0F00 >> 8)) (ucast (w1 AND 0x000F)))
-    else None)" |
-  "decode_inst (w1, Some w2) = (if w1 AND 0xF0F0 = 0xE030 then Some (INOT (ucast (w1 AND 0x000F)))
-            else if w1 AND 0xF0F0 = 0x4030 then Some (IMOVI w2 (ucast (w1 AND 0x000F)))
-            else None)"*)
