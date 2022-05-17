@@ -237,7 +237,9 @@ let test_in_device =
   let property (c, r) =
     let i = IN r in
     match (io_device_choices c).read_transition with
-    | None -> step c i = `halt NoIn
+    | None -> 
+        let valid = mac_valid c i in 
+        valid ==> (step c i  = `halt NoIn)
     | Some (w, d') ->
         let valid = mac_valid c i in
         let good = step c i |> is_ok in
@@ -255,7 +257,7 @@ let test_in_device =
       (Configuration.configuration_unprotected_minimal () ~io_device)
       Register.gp_register
   in
-  QCheck2.Test.make ~name:"IN performs a read from the device" ~count:20000 gen
+  QCheck2.Test.make ~name:"IN performs a read from the device" ~count:100000 gen
     property ~print:(fun (c, r) ->
       "------------CONFIG:------------\n" ^ string_of_configuration c
       ^ "\n------------REGISTER---------------\n"
@@ -270,7 +272,9 @@ let test_out_device =
     register_set c.layout c.r r w;
     let i = OUT r in
     match List.assoc_opt (register_get c.r r) (io_device_choices c).write_transitions with
-    | None -> step c i = `halt NoOut
+    | None -> 
+      let valid = mac_valid c i in 
+        valid ==> (step c i  = `halt NoOut)
     | Some d' ->
         let valid = mac_valid c i in
         let good = step c i |> is_ok in
@@ -291,7 +295,7 @@ let test_out_device =
       Register.gp_register
       (0 -- write_transitions_max >|= Word.from_int)
   in
-  QCheck2.Test.make ~name:"OUT performs a read from the device" ~count:20000 gen
+  QCheck2.Test.make ~name:"OUT performs a read from the device" ~count:100000 gen
     property ~print:(fun (c, r, w) ->
       "CONFIG: \n" ^ string_of_configuration c ^ "\n REGISTER "
       ^ string_of_register r ^ " VALUE: "

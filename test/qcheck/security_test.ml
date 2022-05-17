@@ -6,7 +6,13 @@ open Lis2022.Types
 open Lis2022.Ast
 open Lis2022.Semantics
 open Generators
-open Semantics (Lis2022.Interrupt_logic.Sancus_low)
+
+module S_low = Semantics (Lis2022.Interrupt_logic.Sancus_low)
+module S_high = Semantics (Lis2022.Interrupt_logic.Sancus_high)
+module S_unsafe = Semantics (Lis2022.Interrupt_logic.Sancus_unsafe)
+
+
+
 
 let is_ok x = x = `ok
 
