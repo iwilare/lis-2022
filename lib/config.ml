@@ -15,6 +15,8 @@ type backup = {
 }
 
 type 'io_state config = {
+  (* Helper exception flag *)
+  exception_happened : bool;
   (* Memory layout *)
   layout : memory_layout;
   (* Global device *)
@@ -31,7 +33,26 @@ type 'io_state config = {
   b : backup option;
 }
 
+let cpu_mode c = cpu_mode_of_address c.layout c.r.pc
+let io_device_choices c = List.assoc c.io_state c.io_device.delta
+let flag_gie c = get_bit mask_gie c.r.sr
+let flag_z c = get_bit mask_z c.r.sr
+let flag_v c = get_bit mask_v c.r.sr
+let write_transitions word c = List.assoc_opt word (io_device_choices c).write_transitions
+let read_transition c = (io_device_choices c).read_transition
+let current_clock c = c.current_clock
+let arrival_time c = c.arrival_time
+let backup c = c.b
+let isr c = c.layout.isr
+let pc c = c.r.pc
+let sr c = c.r.sr
+let sp c = c.r.sp
+let load_here c = fun a -> memory_get a c.m
+
 let string_of_config c =
+  if c.exception_happened then
+    "<EXCEPTION OCCURRED>"
+  else
   "Layout: " ^ string_of_layout c.layout ^ "\nClock: "
   ^ string_of_time c.current_clock
   ^ "\tIO state: " ^ string_of_int c.io_state ^ "\tArrival time: "
@@ -57,21 +78,18 @@ let init_config layout io_device memory =
     m = memory;
     r = register_file_init memory;
     b = None;
+    exception_happened = false;
   }
 
 let exception_config extra_cycles c =
   { c with
+     exception_happened = true;
      current_clock = c.current_clock + extra_cycles;
      arrival_time = None;
      pc_old = w0xFFFE;
      b = None;
      r = {register_file_0 with pc = memory_get w0xFFFE c.m};
   }
-
-let cpu_mode c = cpu_mode_of_address c.layout c.r.pc
-let io_device_choices c = List.assoc c.io_state c.io_device.delta
-let flag_gie c = get_bit mask_gie c.r.sr
-let flag_z c = get_bit mask_z c.r.sr
 
 let rec mac_valid i c =
   let rget r = register_get r c.r in

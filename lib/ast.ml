@@ -81,20 +81,20 @@ let string_of_register = function
 | R14 -> "R14"
 | R15 -> "R15"
 
-let string_of_instr = function  
+let string_of_instr = function
 | NOP -> "NOP"
 | RETI -> "RETI"
 | HLT -> "HLT"
 | IN _ -> "IN"
-| OUT r -> "OUT" ^ string_of_register r
-| JMP r -> "JMP" ^ string_of_register r
-| JZ r -> "JZ" ^ string_of_register r
-| MOV (r1, r2) -> "MOV" ^ string_of_register r1 ^ " " ^ string_of_register r2
-| MOV_LOAD (r1, r2) -> "MOV_LOAD" ^ string_of_register r1 ^ " " ^ string_of_register r2
-| MOV_STORE (r1, r2) -> "MOV_STORE" ^ string_of_register r1 ^ " " ^ string_of_register r2
-| MOV_IMM (imm, r) -> "MOV_IMM" ^ Word.show imm ^ " " ^ string_of_register r
-| NOT r -> "NOT" ^ string_of_register r
-| ADD (r1, r2) -> "ADD" ^ string_of_register r1 ^ " " ^ string_of_register r2
-| SUB (r1, r2) -> "SUB" ^ string_of_register r1 ^ " " ^ string_of_register r2
-| AND (r1, r2) -> "AND" ^ string_of_register r1 ^ " " ^ string_of_register r2
-| CMP (r1, r2) -> "CMP" ^ string_of_register r1 ^ " " ^ string_of_register r2
+| OUT r -> "OUT " ^ string_of_register r
+| JMP r -> "JMP " ^ string_of_register r
+| JZ r -> "JZ " ^ string_of_register r
+| MOV (r1, r2) -> "MOV " ^ string_of_register r1 ^ " " ^ string_of_register r2
+| MOV_LOAD (r1, r2) -> "MOV_LOAD " ^ string_of_register r1 ^ " " ^ string_of_register r2
+| MOV_STORE (r1, r2) -> "MOV_STORE " ^ string_of_register r1 ^ " " ^ string_of_register r2
+| MOV_IMM (imm, r) -> "MOV_IMM " ^ Word.show imm ^ " " ^ string_of_register r
+| NOT r -> "NOT " ^ string_of_register r
+| ADD (r1, r2) -> "ADD " ^ string_of_register r1 ^ " " ^ string_of_register r2
+| SUB (r1, r2) -> "SUB " ^ string_of_register r1 ^ " " ^ string_of_register r2
+| AND (r1, r2) -> "AND " ^ string_of_register r1 ^ " " ^ string_of_register r2
+| CMP (r1, r2) -> "CMP " ^ string_of_register r1 ^ " " ^ string_of_register r2

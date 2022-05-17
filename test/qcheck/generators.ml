@@ -152,7 +152,7 @@ module Config = struct
   let default_io_device = default_io_device
 
   let t_pad = 0 -- Lis2022.Ast.max_cycles
-  
+
   let backup layout =
     let* pc_old = Memory.protected_address layout in
     let* r = Register.register_file_protected layout in
@@ -272,30 +272,30 @@ module Instructions = struct
 
   let arith_instr r1 r2 = [ADD(r1, r2);AND(r1, r2);SUB(r1, r2);CMP(r1, r2)]
 
-  
+
   let random_reg1_instr =
     let* r = Register.gp_register in
     oneofl @@ device_instr r @ jump_instr r
 
-  
+
   let random_reg2_instr =
     let* r1 = Register.gp_register in
     let* r2 = Register.gp_register in
     oneofl @@ mov_instr r1 r2 @ arith_instr r1 r2
-    
-  let no_jump_reg1_instr = 
-    let* r = Register.gp_register in 
+
+  let no_jump_reg1_instr =
+    let* r = Register.gp_register in
     oneofl  @@ device_instr r
 
   let move_immediate =
     map2 (fun i r -> MOV_IMM (i, r)) Memory.word Register.gp_register
-  
-  let not_inst = 
-    let* r = Register.gp_register in 
+
+  let not_inst =
+    let* r = Register.gp_register in
     pure (NOT r)
-  
-  
-  let inst_1word_no_jump = 
+
+
+  let inst_1word_no_jump =
     oneof [pure HLT; pure NOP; pure RETI; no_jump_reg1_instr; random_reg2_instr]
   let random_inst =
     oneof
@@ -304,14 +304,14 @@ end
 
 
 (* module Programs = struct
-  
+
   open Lis2022.Configuration
   open QCheck2.Gen
 
-let program_in_enclave (conf: Configuration) =  
+let program_in_enclave (conf: Configuration) =
   let code_range = conf.layout.code in
-  let code_size = code_range.enclave_end - code_range.enclave_end +1 in 
-  
-  sized @@ 
+  let code_size = code_range.enclave_end - code_range.enclave_end +1 in
+
+  sized @@
 
 end *)

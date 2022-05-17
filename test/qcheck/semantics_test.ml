@@ -20,8 +20,8 @@ let show_step =
 
 let printer_step i c =
   "Executing " ^ string_of_instr i
-  ^ "\n\nBefore: " ^ string_of_config c 
-  ^ "\n\nAfter: " ^ show_step (step i c)
+  ^ "\n\n(before) " ^ string_of_config c
+  ^ "\n\n(after) " ^ show_step (step i c)
 
 let step_and_check_instruction i c ~predicate_ok ~predicate_halt =
   mac_valid i c ==> match step i c with
@@ -36,12 +36,10 @@ let test_operation name operation instruction =
         let after_r2 = register_get r2 c'.r in
         let before_r1 = register_get r1 c.r in
         let before_r2 = register_get r2 c.r in
-        let result, v = operation before_r1 before_r2 in
-        let overflow = v && get_bit mask_v (register_get SR c'.r) in
-        let unchanged_r1 = r1 == r2 || after_r1 = before_r1 in
-        let changed_r2 = overflow || after_r2 = result in
-        unchanged_r1 && changed_r2
-      )
+        let result, op_overflow = operation before_r1 before_r2 in
+        let unchanged_r1 = r1 = r2 || after_r1 = before_r1 in
+        let changed_r2 = after_r2 = result in
+        (op_overflow = flag_v c') && unchanged_r1 && changed_r2)
       ~predicate_halt: false
   in
   let gen =
@@ -181,15 +179,14 @@ let test_jz_um z_case =
     let i = JZ r in
     step_and_check_instruction i c
       ~predicate_ok: (fun c' ->
-        let z = get_bit mask_z c.r.sr in
         let before_r = register_get r c.r in
         let after_r = register_get r c'.r in
         let unchanged_r = after_r = before_r in
         unchanged_r &&
           (if z_case then
-            z ==> Word.(c'.r.pc = c.r.pc)
+            flag_z c ==> Word.(c'.r.pc = c.r.pc)
           else
-            (not z) ==> Word.(c'.r.pc = c.r.pc + Word.from_int (size i))))
+            not (flag_z c) ==> Word.(c'.r.pc = c.r.pc + Word.from_int (size i))))
       ~predicate_halt: false
   in
   let gen =
