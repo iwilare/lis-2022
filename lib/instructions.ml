@@ -63,7 +63,7 @@ let opcode = function
 
 let identify code =
   let pick (mask, opcode, ist) = if Word.(code land mask = opcode) then Some(ist) else None in
-  List.find_map pick 
+  List.find_map pick
     [ Word.from_int 0xFFF0, Word.from_int 0x1300, RETI
     ; Word.from_int 0xFFF0, Word.from_int 0x1340, NOP
     ; Word.from_int 0xFFF0, Word.from_int 0x1380, HLT
@@ -125,7 +125,7 @@ let decode (v : word list) =
   | [w1] when identify w1 = Some(MOV(R3,R3)) -> Some(MOV(get_s_reg w1, get_reg w1))
   | [w1] when identify w1 = Some(MOV_LOAD(R3,R3)) -> Some(MOV_LOAD(get_s_reg w1, get_reg w1))
   | [w1;_] when identify w1 = Some(MOV_STORE(R3,R3)) -> Some(MOV_STORE(get_s_reg w1, get_reg w1))
-  | [w1;w0xFFFF] when identify w1 = Some(NOT(R3)) -> Some(NOT(get_reg w1))
+  | [w1;_] when identify w1 = Some(NOT(R3)) -> Some(NOT(get_reg w1))
   | [w1;w2] when identify w1 = Some(MOV_IMM(Word.zero,R3)) -> Some(MOV_IMM (w2, get_reg w1))
   | _ -> None
 
@@ -135,4 +135,3 @@ let fetch_and_decode addr m =
   Option.bind (identify (memory_get addr m))
     (fun prototype ->
       decode (memory_get_words addr (size_in_words prototype) m))
- 

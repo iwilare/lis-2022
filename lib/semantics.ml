@@ -49,8 +49,8 @@ module Semantics (I : Interrupt_logic) = struct
             I.interrupt_logic)
     | OUT r -> (
         let* word = rget r in
-        let@ t = write_transitions word in
-        match t with
+        let@ write_transitions in
+        match write_transitions word with
         | None -> halt NoOut
         | Some d' ->
             set_io_state d' >>
