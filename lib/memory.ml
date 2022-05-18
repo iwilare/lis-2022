@@ -50,27 +50,31 @@ let align_even x = Word.(x land w0xFFFE)
 let is_touching_last_word_address (addr : word) =
   addr = w0xFFFE || addr = w0xFFFF
 
-type enclave_range = { enclave_start : address; enclave_end : address }
+type address_range = {range_start: address; range_end: address}
+
+let is_in_range range addr =
+  range.range_start <= addr && addr < range.range_end
 
 let string_of_range r =
   "["
-  ^ Word.show_address r.enclave_start
+  ^ Word.show_address r.range_start
   ^ ","
-  ^ Word.show_address r.enclave_end
+  ^ Word.show_address r.range_end
   ^ "]"
 
 type memory_layout = {
   (* Must be non-overlapping region *)
   (* isr must not be in the enclave. *)
   (* 0xFFFE must be outside the enclave sections and different from isr. *)
-  data : enclave_range;
-  code : enclave_range;
-  isr : address;
+  enclave_data : address_range;
+  enclave_code : address_range;
+  attacker_range : address_range;
+  isr_range : address_range;
 }
 
 let string_of_layout l =
-  "data: " ^ string_of_range l.data ^ " code: " ^ string_of_range l.code
-  ^ " isr: " ^ Word.show_address l.isr
+  "data: " ^ string_of_range l.enclave_data ^ " code: " ^ string_of_range l.enclave_code
+  ^ " isr: " ^ Word.show_address l.isr_range.range_start
 
 (* Memory type *)
 
@@ -79,13 +83,11 @@ type memory_type =
   | EnclaveCode of { is_entry_point : bool }
   | Unprotected
 
-let is_enclave_code enc addr =
-  enc.code.enclave_start <= addr && addr < enc.code.enclave_end
+let is_enclave_code layout = is_in_range layout.enclave_code
 
-let is_enclave_data enc addr =
-  enc.data.enclave_start <= addr && addr < enc.data.enclave_end
+let is_enclave_data layout = is_in_range layout.enclave_data
 
-let is_enclave_entry_point enc addr = addr = enc.code.enclave_start
+let is_enclave_entry_point layout addr = addr = layout.enclave_code.range_start
 
 let get_memory_type enc addr =
   if is_enclave_code enc addr then

@@ -43,7 +43,8 @@ let read_transition c = (io_device_choices c).read_transition
 let current_clock c = c.current_clock
 let arrival_time c = c.arrival_time
 let backup c = c.b
-let isr c = c.layout.isr
+let generate_backup t_pad c = { r = c.r; t_pad; pc_old = c.pc_old }
+let isr c = c.layout.isr_range.range_start
 let pc c = c.r.pc
 let sr c = c.r.sr
 let sp c = c.r.sp
