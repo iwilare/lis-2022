@@ -27,3 +27,19 @@ From the root of the project:
     ```bash 
     dune exec lis2022
     ```
+## Esy 
+
+- Install esy 
+
+```bash
+npm install -g esy 
+``` 
+- Build sandbox and project 
+```bash 
+esy 
+```
+
+- Run tests in sandbox 
+```bash
+esy test-force
+```
