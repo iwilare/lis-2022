@@ -203,7 +203,7 @@ let test_jz_um z_case =
 let test_in_device =
   let property (c, r) =
     let i = IN r in
-    let transition = (io_device_choices c).read_transition in
+    let transition = read_transition c in
     step_and_check_instruction i c
     ~predicate_ok: (fun c' ->
       match transition with
@@ -225,7 +225,7 @@ let test_out_device =
     let i = OUT r in
     (* Set the word to be written in r *)
     let c = {c with r = register_set c.layout r word_to_write c.r} in
-    let transition = List.assoc_opt (register_get r c.r) (io_device_choices c).write_transitions in
+    let transition = write_transitions c (register_get r c.r) in
     step_and_check_instruction i c
     ~predicate_ok: (fun c' ->
       match transition with

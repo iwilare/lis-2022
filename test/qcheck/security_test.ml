@@ -1,21 +1,18 @@
-open QCheck2
-open Lis2022.Register_file
-open Lis2022.Config
-open Lis2022.Memory
 open Lis2022.Ast
-open Lis2022.Io_device
-open Lis2022.Types
-open Lis2022.Semantics
-open Lis2022.Config_monad
-open Lis2022.Halt_error
-open Lis2022.Interrupt_logic
+open Lis2022.Config
 open Lis2022.Instructions
+open Lis2022.Interrupt_logic
+open Lis2022.Io_device
+open Lis2022.Memory
+open Lis2022.Halt_error
+open Lis2022.Register_file
+open Lis2022.Semantics
 open Generators
-
 
 module S_low = Semantics(Sancus_low)
 module S_high = Semantics(Sancus_high)
 module S_unsafe = Semantics(Sancus_unsafe)
+
 (*
   Attacker context
     - Memory
@@ -55,18 +52,27 @@ Experiment 2
   - Check if any of the attacker registers read with INs differ.
 
   ---------------------------------------------------------------------
-
-
 *)
 
+let show_step = function
+  | `ok (), c -> string_of_config c
+  | `halt e, _ -> "halt " ^ string_of_halt_error e
+
 let test_non_interference =
-  let property (enclave1,enclave2,c) =
+  let property (enclave1,enclave2,c,_) =
     let context_memory =
         c.m |> encode_and_put_program (isr c) [IN(R3); HLT]
             |> encode_and_put_program (attacker c) [MOV_IMM(enclave_start c,R3); JMP(R3)] in
     let full_memory1 = context_memory |> encode_and_put_program c.layout.enclave_code.range_start enclave1 in
     let full_memory2 = context_memory |> encode_and_put_program c.layout.enclave_code.range_start enclave2 in
-    true
+    let config1 = {c with m = full_memory1} in
+    let config2 = {c with m = full_memory2} in
+    let result1 = S_low.run () config1 in
+    let result2 = S_low.run () config2 in
+
+    match (result1, result2) with
+    | (`ok (), c), (`ok (), c') -> c.r.r3 = c'.r.r3
+    | _ -> false
   in
   let gen =
     QCheck2.Gen.(
@@ -77,8 +83,10 @@ let test_non_interference =
     let* enclave2 = Instructions.n_cycles_simple_program n_cycles in
     let* security_relevant_device = Io_device.security_relevant_device io_device_states when_interrupt in
     let* configuration = Config.config_unprotected_minimal ~io_device:security_relevant_device () in
-    pure (enclave1,enclave2,configuration)) in
-  QCheck2.Test.make ~name:"Test that Sancus_unsafe breaks the enclave abstraction" ~count:100000 gen property
+    pure (enclave1,enclave2,configuration,security_relevant_device)) in
+  QCheck2.Test.make ~name:"Test that Sancus_unsafe breaks the enclave abstraction" ~count:100000
+    ~print:(fun (_,_,_,p) -> string_of_io_device p)
+  gen property
 
 let tests =
   [

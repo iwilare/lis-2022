@@ -34,12 +34,11 @@ type 'io_state config = {
 }
 
 let cpu_mode c = cpu_mode_of_address c.layout c.r.pc
-let io_device_choices c = List.assoc c.io_state c.io_device.delta
 let flag_gie c = get_bit mask_gie c.r.sr
 let flag_z c = get_bit mask_z c.r.sr
 let flag_v c = get_bit mask_v c.r.sr
-let write_transitions c = fun word -> List.assoc_opt word (io_device_choices c).write_transitions
-let read_transition c = (io_device_choices c).read_transition
+let write_transitions c = io_device_write_transitions c.io_device c.io_state
+let read_transition c = io_device_read_transition c.io_device c.io_state
 let current_clock c = c.current_clock
 let arrival_time c = c.arrival_time
 let backup c = c.b
