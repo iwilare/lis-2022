@@ -116,6 +116,8 @@ module Config = struct
   open Lis2022.Memory
   open Lis2022.Io_device
   open Lis2022.Config
+  open Lis2022.Register_file
+
 
   let default_memory = memory_init ()
 
@@ -135,6 +137,9 @@ module Config = struct
     let* r = Register.register_file_unprotected layout in
     let* b = opt (backup layout) in
     let m = default_memory in
+    (* If the backup is Some(...) then set GIE to zero in the config *)
+    let set_gie_zero_if_backup =
+      Option.fold b ~none:Fun.id ~some:(Fun.const (set_bit mask_gie false)) in
     pure
       {
         io_state = io_device.init_state;
@@ -145,7 +150,7 @@ module Config = struct
         pc_old;
         m;
         b;
-        r;
+        r = { r with sr = set_gie_zero_if_backup r.sr };
         exception_happened = false;
       }
 

@@ -22,7 +22,7 @@ let printer_step i c =
   ^ "\n\n(after) " ^ show_step (step i c)
 
 let step_and_check_instruction i c ~predicate_ok ~predicate_halt =
-  mac_valid i c ==> match step i c with
+  match step i c with
   | `ok (), c -> predicate_ok c
   | `halt _, _ -> predicate_halt
 
@@ -244,7 +244,7 @@ let tests =
     test_operation "ADD" Word.Overflow.( + ) (fun (r1, r2) -> ADD (r1, r2));
     test_operation "SUB" Word.Overflow.( - ) (fun (r1, r2) -> SUB (r1, r2));
     test_operation "AND" Word.Overflow.( land ) (fun (r1, r2) -> AND (r1, r2));
-    test_not;
+    (*test_not;
     test_mov;
     test_movi;
     test_load_um;
@@ -253,5 +253,5 @@ let tests =
     test_jz_um true;
     test_jz_um false;
     test_in_device;
-    test_out_device;
+    test_out_device;*)
   ]
