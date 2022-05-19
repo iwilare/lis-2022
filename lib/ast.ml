@@ -43,13 +43,7 @@ let size = function
   | NOT _ -> 4
   | _ -> 2
 
-(* Length in words *)
-
-let size_in_words = function
-  | MOV_STORE (_, _) -> 2
-  | MOV_IMM (_, _) -> 2
-  | NOT _ -> 2
-  | _ -> 1
+let max_instruction_size = 4
 
 let cycles = function
   | RETI -> 5

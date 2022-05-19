@@ -62,6 +62,7 @@ let test_not =
     pair (Config.config_unprotected_minimal ()) Register.gp_register
   in
   QCheck2.Test.make ~name:"NOT changes the register with the correct value"
+    ~print:(fun (c, r) -> printer_step (NOT r) c)
     ~count:20000 gen property
 
 let test_mov =
@@ -82,6 +83,7 @@ let test_mov =
   QCheck2.Test.make
     ~name:
       "MOV changes the second register with the correct value from the first"
+    ~print:(fun (c, r1, r2) -> printer_step (MOV (r1, r2)) c)
     ~count:20000 gen property
 
 let test_movi =
@@ -99,6 +101,7 @@ let test_movi =
   in
   QCheck2.Test.make
     ~name:"MOV_IMM changes the register with the immediate value provided"
+    ~print:(fun (c, w, r) -> printer_step (MOV_IMM (w, r)) c)
     ~count:20000 gen property
 
 let test_load_um =
@@ -122,6 +125,7 @@ let test_load_um =
   QCheck2.Test.make
     ~name:
       "MOV_LOAD (UM) changes the memory with the correct value from the register"
+    ~print:(fun (c, r1, r2, _) -> printer_step (MOV_LOAD (r1, r2)) c)
     ~count:20000 gen property
 let test_store_um =
   let property (c, r1, r2, unprotected_addr) =
@@ -244,7 +248,7 @@ let tests =
     test_operation "ADD" Word.Overflow.( + ) (fun (r1, r2) -> ADD (r1, r2));
     test_operation "SUB" Word.Overflow.( - ) (fun (r1, r2) -> SUB (r1, r2));
     test_operation "AND" Word.Overflow.( land ) (fun (r1, r2) -> AND (r1, r2));
-    (*test_not;
+    test_not;
     test_mov;
     test_movi;
     test_load_um;
@@ -253,5 +257,5 @@ let tests =
     test_jz_um true;
     test_jz_um false;
     test_in_device;
-    test_out_device;*)
+    test_out_device;
   ]

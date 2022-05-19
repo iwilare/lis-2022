@@ -15,8 +15,8 @@ module Memory = struct
   let byte = 0x00 -- 0xFF >|= Byte.from_int
   let last_valid_address = w0xFFFC
 
-  let address_in_range r =
-    let* w = to_int r.range_start -- to_int r.range_end in
+  let address_in_range ?(availability = 0) r =
+    let* w = to_int r.range_start -- Stdlib.(to_int r.range_end - availability) in
     pure (align_even (from_int w))
 
   let address = address_in_range {range_start = Word.zero; range_end = w0xFFFE}
@@ -39,12 +39,12 @@ module Memory = struct
 
   let attacker_range l = address_in_range l.attacker_range
 
-  let unprotected_address l =
-    oneof [address_in_range l.attacker_range; address_in_range l.isr_range]
-
-  let protected_address l = address_in_range l.enclave_code
+  let protected_address ?(availability = 0) l = address_in_range l.enclave_code ~availability:availability
 
   let protected_data_address l = address_in_range l.enclave_data
+
+  let unprotected_address ?(availability = 0) l =
+    oneof [address_in_range l.attacker_range ~availability:availability; address_in_range l.isr_range ~availability:availability]
 
   let any_protected_address l =
     oneof [address_in_range l.enclave_data; address_in_range l.enclave_code]
@@ -106,9 +106,9 @@ module Register = struct
     let* r15 = Memory.word in
     pure { pc; sp; sr; r3; r4; r5; r6; r7; r8; r9; r10; r11; r12; r13; r14; r15 }
 
-  let register_file_protected l = register_file l (Memory.protected_address l)
+  let register_file_protected ?(pc_availability = 0) l = register_file l (Memory.protected_address l ~availability:pc_availability)
 
-  let register_file_unprotected l = register_file l (Memory.unprotected_address l)
+  let register_file_unprotected ?(pc_availability = 0) l = register_file l (Memory.unprotected_address l ~availability:pc_availability)
 end
 
 module Config = struct
@@ -116,8 +116,8 @@ module Config = struct
   open Lis2022.Memory
   open Lis2022.Io_device
   open Lis2022.Config
+  open Lis2022.Ast
   open Lis2022.Register_file
-
 
   let default_memory = memory_init ()
 
@@ -131,10 +131,11 @@ module Config = struct
     let* t_pad = t_pad in
     pure { r; pc_old; t_pad }
 
-  let config_unprotected_minimal ?(io_device = default_io_device) () =
+  (* One instruction with max length availability *)
+  let config_unprotected_minimal ?(io_device = default_io_device) ?(pc_availability = max_instruction_size - 1) () =
     let* layout = Memory.layout in
     let* pc_old = Memory.unprotected_address layout in
-    let* r = Register.register_file_unprotected layout in
+    let* r = Register.register_file_unprotected layout ~pc_availability:pc_availability in
     let* b = opt (backup layout) in
     let m = default_memory in
     (* If the backup is Some(...) then set GIE to zero in the config *)
@@ -154,10 +155,11 @@ module Config = struct
         exception_happened = false;
       }
 
-  let config_protected_minimal ?(io_device = default_io_device) () =
+  (* One instruction with max length availability *)
+  let config_protected_minimal ?(io_device = default_io_device) ?(pc_availability = max_instruction_size - 1) () =
     let* layout = Memory.layout in
     let* pc_old = Memory.protected_address layout in
-    let* r = Register.register_file_protected layout in
+    let* r = Register.register_file_protected layout ~pc_availability:pc_availability in
     let b = None in (* Always none because we are in protected mode *)
     let m = default_memory in
     pure
