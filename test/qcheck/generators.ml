@@ -15,69 +15,51 @@ module Memory = struct
   let byte = 0x00 -- 0xFF >|= Byte.from_int
   let last_valid_address = w0xFFFC
 
-  let address_in_range a b =
-    let* w = to_int a -- to_int b in
+  let address_in_range r =
+    let* w = to_int r.range_start -- to_int r.range_end in
     pure (align_even (from_int w))
 
-  let address = address_in_range zero w0xFFFC (* Exclude last address *)
+  let address = address_in_range {range_start = Word.zero; range_end = w0xFFFE}
+
   let (memory : memory QCheck2.Gen.t) = pure [] (*array_size (pure limit) byte*)
   (* TODO: fix this. This causes QCheck to hang when generating a memory during
      a failing test, no idea why. *)
 
-  let enclave_range a b =
-    let* enclave_start = address_in_range a (b - from_int 1) in
-    let* enclave_end = address_in_range (enclave_start + from_int 1) b in
-    pure { enclave_start; enclave_end }
-
-  let address_out_of_enclave data code =
-    oneof
-      [
-        address_in_range zero (min data.enclave_start code.enclave_start);
-        address_in_range
-          (min data.enclave_end code.enclave_end)
-          (max data.enclave_start code.enclave_start);
-        address_in_range
-          (max data.enclave_end code.enclave_end)
-          last_valid_address;
-      ]
-
+  (* Global values for layout generation *)
   let layout =
-    let low = enclave_range zero (last_valid_address lsr 1) in
-    (* Avoid the first address, = ISR *)
-    let high =
-      enclave_range ((last_valid_address lsr 1) + from_int 1) last_valid_address
-    in
-    (* Avoid the last address *)
-    let* data, code = oneof [ pair low high; pair high low ] in
-    let* isr = address_out_of_enclave data code in
-    pure { data; code; isr }
-  (* WARNING: ISR is set to always zero in these examples! *)
+    let sec1 = {range_start = from_int 0x0000; range_end = from_int 0x3FFF} in
+    let sec2 = {range_start = from_int 0x4000; range_end = from_int 0x7FFF} in
+    let sec3 = {range_start = from_int 0x8000; range_end = from_int 0xBFFF} in
+    let sec4 = {range_start = from_int 0xC000; range_end = from_int 0xFFFC} in (* Avoid 0xFFFE *)
+    let* shuf = QCheck2.Gen.shuffle_l [sec1; sec2; sec3; sec4] in
+    match shuf with
+    | [attacker_range; enclave_data; enclave_code; isr_range] ->
+      pure { enclave_data; enclave_code; attacker_range; isr_range; }
+    | _ -> failwith "<IMPOSSIBLE>"
+
+  let attacker_range l = address_in_range l.attacker_range
 
   let unprotected_address l =
-    address_out_of_enclave l.data l.code >|= fun addr ->
-    (*assert (addr != l.isr);*)
-    (* TODO: introduce a proper generation mechanism *)
-    addr
+    oneof [address_in_range l.attacker_range; address_in_range l.isr_range]
 
-  let protected_address l =
-    address_in_range l.code.enclave_start l.code.enclave_end
+  let protected_address l = address_in_range l.enclave_code
 
-  let protected_data_address l =
-    address_in_range l.data.enclave_start l.data.enclave_end
+  let protected_data_address l = address_in_range l.enclave_data
 
-  let any_protected_address layout =
-    oneof [ protected_address layout; protected_data_address layout ]
+  let any_protected_address l =
+    oneof [address_in_range l.enclave_data; address_in_range l.enclave_code]
 end
 
 module Register = struct
   open QCheck2.Gen
   open Lis2022.Register_file
   open Lis2022.Ast
+  open Lis2022.Memory
   open Lis2022.Types.Word
 
   let sr_mask = oneofl [ mask_c; mask_gie; mask_n; mask_v; mask_z ]
 
-  (* Avoid settings GIE without context on the mode *)
+  (* GIE is always activated by default *)
   let sr_register_value =
     let* c = QCheck2.Gen.bool in
     let* n = QCheck2.Gen.bool in
@@ -87,7 +69,8 @@ module Register = struct
       ((if c then mask_c else zero)
       lor (if n then mask_n else zero)
       lor (if v then mask_v else zero)
-      lor if z then mask_z else zero)
+      lor (if z then mask_z else zero)
+      lor mask_gie)
 
   (* Any register *)
   let any_register =
@@ -104,10 +87,10 @@ module Register = struct
   let gp_register =
     oneofl [ R3; R4; R5; R6; R7; R8; R9; R10; R11; R12; R13; R14; R15 ]
 
-  let any_register_file =
-    let* pc = Memory.address in
-    let* sp = Memory.address in
-    let* sr = Memory.word in
+  let register_file l pc =
+    let* pc in
+    let sp = l.attacker_range.range_end in
+    let* sr = sr_register_value in
     let* r3 = Memory.word in
     let* r4 = Memory.word in
     let* r5 = Memory.word in
@@ -121,23 +104,11 @@ module Register = struct
     let* r13 = Memory.word in
     let* r14 = Memory.word in
     let* r15 = Memory.word in
-    pure
-      { pc; sp; sr; r3; r4; r5; r6; r7; r8; r9; r10; r11; r12; r13; r14; r15 }
+    pure { pc; sp; sr; r3; r4; r5; r6; r7; r8; r9; r10; r11; r12; r13; r14; r15 }
 
-  let register_file_protected layout =
-    let* pc = Memory.protected_address layout in
-    (* SP always points to an unprotected location *)
-    let* sp = Memory.unprotected_address layout in
-    let* sr = sr_register_value in
-    let* r = any_register_file in
-    pure { r with pc; sp; sr }
+  let register_file_protected l = register_file l (Memory.protected_address l)
 
-  let register_file_unprotected layout =
-    let* pc = Memory.unprotected_address layout in
-    let* sp = Memory.unprotected_address layout in
-    let* sr = sr_register_value in
-    let* r = any_register_file in
-    pure { r with pc; sp; sr }
+  let register_file_unprotected l = register_file l (Memory.unprotected_address l)
 end
 
 module Config = struct
@@ -161,38 +132,46 @@ module Config = struct
 
   let config_unprotected_minimal ?(io_device = default_io_device) () =
     let* layout = Memory.layout in
-    let* r = Register.register_file_unprotected layout in
     let* pc_old = Memory.unprotected_address layout in
+    let* r = Register.register_file_unprotected layout in
     let* b = opt (backup layout) in
-    (* If the backup is Some(...) then set GIE to zero in the config *)
-    let set_gie_zero_if_backup =
-      Option.fold b ~none:Fun.id ~some:(Fun.const (set_bit mask_gie false))
-    in
+    let m = default_memory in
     pure
       {
-        (init_config layout io_device default_memory) with
+        io_state = io_device.init_state;
+        current_clock = 0;
+        arrival_time = None;
+        io_device;
+        layout;
         pc_old;
-        r = { r with sr = set_gie_zero_if_backup r.sr };
+        m;
         b;
+        r;
+        exception_happened = false;
       }
 
   let config_protected_minimal ?(io_device = default_io_device) () =
     let* layout = Memory.layout in
-    let* r = Register.register_file_protected layout in
     let* pc_old = Memory.protected_address layout in
+    let* r = Register.register_file_protected layout in
+    let b = None in (* Always none because we are in protected mode *)
+    let m = default_memory in
     pure
       {
-        (init_config layout io_device default_memory) with
+        io_state = io_device.init_state;
+        current_clock = 0;
+        arrival_time = None;
+        io_device;
+        layout;
         pc_old;
+        m;
+        b;
         r;
-        b = None;
+        exception_happened = false;
       }
 
   let any_config_minimal =
-    oneof
-      [
-        config_unprotected_minimal (); config_protected_minimal ();
-      ]
+    oneof [ config_unprotected_minimal (); config_protected_minimal (); ]
 end
 
 module Io_device = struct

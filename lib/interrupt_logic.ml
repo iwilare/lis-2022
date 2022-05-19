@@ -36,10 +36,11 @@ let interrupt_logic ~activate_padding c =
           let@ current_clock in
           let t_pad = current_clock - ta in
           let k = max_cycles - t_pad in
-          let* c = get in
-          set_backup @@ Some { r = c.r; t_pad; pc_old = c.pc_old } >>
+          let@ new_backup = generate_backup t_pad in
+          let@ isr in
+          set_backup @@ Some new_backup >>
           clear_registers >>
-          rset PC c.layout.isr >>
+          rset PC isr >>
           (if activate_padding then
             advance_config (6 + k)
           else
