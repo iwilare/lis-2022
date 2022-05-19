@@ -7,16 +7,14 @@ open Lis2022.Ast
 open Lis2022.Io_device
 open Lis2022.Types
 open Lis2022.Semantics
-open Lis2022.Config_monad
 open Lis2022.Halt_error
 open Generators
 
 open Semantics (Lis2022.Interrupt_logic.Sancus_high)
 
-let show_step =
-  function
-  | `ok ((), c) -> string_of_config c
-  | `halt e -> "halt " ^ string_of_halt_error e
+let show_step = function
+  | `ok (), c -> string_of_config c
+  | `halt e, _ -> "halt " ^ string_of_halt_error e
 
 let printer_step i c =
   "Executing " ^ string_of_instr i
@@ -25,8 +23,8 @@ let printer_step i c =
 
 let step_and_check_instruction i c ~predicate_ok ~predicate_halt =
   mac_valid i c ==> match step i c with
-  | `ok ((), c') -> predicate_ok c'
-  | `halt _ -> predicate_halt
+  | `ok (), c -> predicate_ok c
+  | `halt _, _ -> predicate_halt
 
 let test_operation name operation instruction =
   let property (c, r1, r2) =
@@ -71,8 +69,8 @@ let test_mov =
     step_and_check_instruction (MOV (r1, r2)) c
       ~predicate_ok: (fun c' ->
         let before_r1 = register_get r1 c.r in
-        let after_r1 = register_get r1 c.r in
-        let after_r2 = register_get r1 c.r in
+        let after_r1 = register_get r1 c'.r in
+        let after_r2 = register_get r1 c'.r in
            before_r1 == after_r1 && before_r1 == after_r2)
       ~predicate_halt: false
   in

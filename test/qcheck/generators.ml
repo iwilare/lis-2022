@@ -115,7 +115,6 @@ module Config = struct
   open QCheck2.Gen
   open Lis2022.Memory
   open Lis2022.Io_device
-  open Lis2022.Register_file
   open Lis2022.Config
 
   let default_memory = memory_init ()
@@ -242,55 +241,42 @@ end
 module Instructions = struct
   open Lis2022.Ast
   open QCheck2.Gen
+  open Lis2022.Types
 
-  let device_instr r = [IN r; OUT r;]
+  let instr_generators =
+    [ NOP, pure NOP
+    ; RETI, pure RETI
+    ; HLT, pure HLT
+    ; IN(R3), Register.gp_register >|= (fun r -> IN r)
+    ; OUT(R3), Register.gp_register >|= (fun r -> OUT r)
+    ; JMP(R3), Register.gp_register >|= (fun r -> JMP r)
+    ; JZ(R3), Register.gp_register >|= (fun r -> JZ r)
+    ; MOV(R3,R3), Register.gp_register >>= (fun r1 -> Register.gp_register >|= fun r2 -> MOV(r1,r2))
+    ; MOV_LOAD(R3,R3), Register.gp_register >>= (fun r1 -> Register.gp_register >|= fun r2 -> MOV_LOAD(r1,r2))
+    ; MOV_STORE(R3,R3), Register.gp_register >>= (fun r1 -> Register.gp_register >|= fun r2 -> MOV_STORE(r1,r2))
+    ; MOV_IMM(Word.zero,R3), Register.gp_register >>= (fun r ->  Memory.word >|= fun immediate -> MOV_IMM(immediate,r))
+    ; NOT(R3), Register.gp_register >|= (fun r1 -> NOT(r1))
+    ; ADD(R3,R3), Register.gp_register >>= (fun r1 -> Register.gp_register >|= fun r2 -> ADD(r1,r2))
+    ; SUB(R3,R3), Register.gp_register >>= (fun r1 -> Register.gp_register >|= fun r2 -> SUB(r1,r2))
+    ; AND(R3,R3), Register.gp_register >>= (fun r1 -> Register.gp_register >|= fun r2 -> AND(r1,r2))
+    ; CMP(R3,R3), Register.gp_register >>= (fun r1 -> Register.gp_register >|= fun r2 -> CMP(r1,r2))
+    ]
 
-  let jump_instr r = [JMP r; JZ r]
+  let instr = oneof (List.map snd instr_generators)
 
-  let mov_instr r1 r2 = [MOV(r1, r2); MOV_LOAD (r1, r2); MOV_STORE (r1,r2)]
+  let simple_instructions = List.filter (fun (p,_) -> is_simple_instr p) instr_generators
 
-  let arith_instr r1 r2 = [ADD(r1, r2);AND(r1, r2);SUB(r1, r2);CMP(r1, r2)]
+  let n_cycles_simple_instruction n = oneof @@ List.filter_map (fun (p,i) -> if cycles p = n then Some i else None) simple_instructions
 
-
-  let random_reg1_instr =
-    let* r = Register.gp_register in
-    oneofl @@ device_instr r @ jump_instr r
-
-
-  let random_reg2_instr =
-    let* r1 = Register.gp_register in
-    let* r2 = Register.gp_register in
-    oneofl @@ mov_instr r1 r2 @ arith_instr r1 r2
-
-  let no_jump_reg1_instr =
-    let* r = Register.gp_register in
-    oneofl  @@ device_instr r
-
-  let move_immediate =
-    map2 (fun i r -> MOV_IMM (i, r)) Memory.word Register.gp_register
-
-  let not_inst =
-    let* r = Register.gp_register in
-    pure (NOT r)
-
-
-  let inst_1word_no_jump =
-    oneof [pure HLT; pure NOP; pure RETI; no_jump_reg1_instr; random_reg2_instr]
-  let random_inst =
-    oneof
-      [ pure HLT; pure NOP; pure RETI; not_inst; random_reg1_instr; random_reg2_instr; move_immediate ]
+  let rec n_cycles_simple_program n =
+    let gen max_cycles =
+      let* i_1_cycles = n_cycles_simple_instruction 1 in
+      let* i_2_cycles = n_cycles_simple_instruction 2 in
+      let* (i, c) = oneofl ([i_1_cycles, 1] @ (if max_cycles = 2 then [i_2_cycles, 2] else [])) in
+      let* rest = n_cycles_simple_program (n - c) in
+      pure (i :: rest) in
+    match n with
+    | n when n > 2 -> gen 2
+    | n when n = 1 -> gen 1
+    | _ -> pure []
 end
-
-
-(* module Programs = struct
-
-  open Lis2022.Configuration
-  open QCheck2.Gen
-
-let program_in_enclave (conf: Configuration) =
-  let code_range = conf.layout.code in
-  let code_size = code_range.enclave_end - code_range.enclave_end +1 in
-
-  sized @@
-
-end *)

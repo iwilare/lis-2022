@@ -1,5 +1,4 @@
 open Memory
-open Register_file
 open Ast
 open Config
 open Halt_error

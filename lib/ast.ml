@@ -69,6 +69,17 @@ let cycles = function
   | AND (_, _) -> 1
   | CMP (_, _) -> 1
 
+(* A simple instruction contains no jumps and does not interact with memory *)
+let is_simple_instr = function
+  | NOP
+  | MOV (_, _)
+  | NOT _
+  | ADD (_, _)
+  | SUB (_, _)
+  | AND (_, _)
+  | CMP (_, _) -> true
+  | _ -> false
+
 let max_cycles = 6
 
 let string_of_register = function

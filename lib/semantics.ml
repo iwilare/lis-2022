@@ -2,11 +2,11 @@ open Memory
 open Register_file
 open Ast
 open Config
-open Io_device
 open Halt_error
 open Interrupt_logic
 open Types.Word
 open Config_monad
+open Instructions
 
 module Semantics (I : Interrupt_logic) = struct
   let execute_instruction_semantics i =
@@ -137,4 +137,15 @@ module Semantics (I : Interrupt_logic) = struct
       rset PC @@ pc + from_int (size i) >>
       (* Check that the instruction is valid *)
       execute_instruction_semantics i)
+
+  let rec run () =
+    let@ pc in
+    let@ i = with_memory (fetch_and_decode pc) in
+    match i with
+    | None -> raise_exception 0
+    | Some i ->
+      let* halted = catch_halt (step i) in
+      match halted with
+      | None -> run ()
+      | Some h -> halt h
 end

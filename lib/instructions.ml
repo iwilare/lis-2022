@@ -135,3 +135,8 @@ let fetch_and_decode addr m =
   Option.bind (identify (memory_get addr m))
     (fun prototype ->
       decode (memory_get_words addr (size_in_words prototype) m))
+
+let rec encode_and_put_program addr is m =
+  match is with
+  | [] -> m
+  | i :: is -> encode_and_put_program Word.(addr + from_int (size_in_words i)) is (encode_and_put addr i m)

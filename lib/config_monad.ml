@@ -6,15 +6,15 @@ open Io_device
 
 (* Monad, Applicative and Functor definitions *)
 
-type ('a, 'io_device) m = 'io_device config ->  [`ok of ('a * 'io_device config) | `halt of halt_error]
+type ('a, 'io_device) m = 'io_device config -> [`ok of 'a | `halt of halt_error] * 'io_device config
 
 let ( (>>=) : ('a, 'io_device) m -> ('a -> ('b, 'io_device) m) -> ('b, 'io_device) m) = fun ma mf ->
   fun c ->
   match ma c with
-  | `halt e -> `halt e
-  | `ok (a, c') -> mf a c'
+  | (`halt e, _) -> (`halt e, c)
+  | (`ok a, c') -> mf a c'
 
-let (pure : 'a -> ('a, 'io_device) m) = fun v -> fun c -> `ok (v,c)
+let (pure : 'a -> ('a, 'io_device) m) = fun v -> fun c -> (`ok v,c)
 
 let (let*) = (>>=)
 
@@ -22,19 +22,24 @@ let (>>) a b = a >>= fun () -> b
 
 (* Monadic operations *)
 
-let (get : (('io_device config), 'io_device) m) = fun c -> `ok(c,c)
+let (get : (('io_device config), 'io_device) m) = fun c -> (`ok c,c)
 
-let (gets : ('io_device config -> 'a) -> ('a, 'io_device) m) = fun f -> fun c -> `ok(f c,c)
+let (gets : ('io_device config -> 'a) -> ('a, 'io_device) m) = fun f -> fun c -> (`ok (f c),c)
 
-let (set : ('io_device config) -> (unit, 'io_device) m) = fun c -> fun _ -> `ok((),c)
+let (set : ('io_device config) -> (unit, 'io_device) m) = fun c -> fun _ -> (`ok (),c)
 
-let (modify : (('io_device config) -> ('io_device config)) -> (unit, 'io_device) m) = fun f -> fun c -> `ok((),f c)
+let (modify : (('io_device config) -> ('io_device config)) -> (unit, 'io_device) m) = fun f -> fun c -> (`ok (),f c)
 
-let (ok : (unit, 'io_device) m) = fun c -> `ok ((), c)
+let (ok : (unit, 'io_device) m) = fun c -> (`ok (), c)
 
-let (halt : halt_error -> ('a, 'io_device) m) = fun err -> fun _ -> `halt err
+let (halt : halt_error -> ('a, 'io_device) m) = fun err -> fun c -> (`halt err, c)
 
 let (let@) a f = gets a >>= f
+
+let catch_halt (m : (unit, 'io_device) m) : (halt_error option, 'io_device) m = fun c ->
+  match m c with
+  | (`halt e, _) -> (`ok (Some e), c)
+  | (`ok (), c') -> (`ok None, c')
 
 (* Getters *)
 

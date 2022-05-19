@@ -45,10 +45,13 @@ let arrival_time c = c.arrival_time
 let backup c = c.b
 let generate_backup t_pad c = { r = c.r; t_pad; pc_old = c.pc_old }
 let isr c = c.layout.isr_range.range_start
+let enclave_start c = c.layout.enclave_code.range_start
+let attacker c = c.layout.attacker_range.range_start
 let pc c = c.r.pc
 let sr c = c.r.sr
 let sp c = c.r.sp
 let load_here c = fun a -> memory_get a c.m
+let with_memory f c = f c.m
 
 let string_of_config c =
   if c.exception_happened then
