@@ -21,6 +21,8 @@ module Byte = struct
   let ( lsr ) = ( lsr )
   let lnot x = lnot x land max_value
   let to_int = Fun.id
+  let inc w = (w + 1) land max_value
+  let inc2 w = (w + 2) land max_value
   let show = Printf.sprintf "%5d"
   let show_hex = Printf.sprintf "%#2X"
 
@@ -65,6 +67,8 @@ module Word = struct
   let show = Printf.sprintf "%5d"
   let to_int = Fun.id
   let show_address = Printf.sprintf "%#5X"
+  let inc w = (w + 1) land max_value
+  let inc2 w = (w + 2) land max_value
 
   module Overflow = struct
     let is_overflow v = not (0 <= v && v <= max_value)

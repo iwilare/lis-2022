@@ -22,6 +22,8 @@ module type Native = sig
   val show : t -> string
   val from_int : int -> t
   val to_int : t -> int
+  val inc : t -> t
+  val inc2 : t -> t
 
   module Overflow : sig
     val ( + ) : t -> t -> t * bool

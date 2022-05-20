@@ -144,7 +144,7 @@ module Config = struct
     pure
       {
         io_state = io_device.init_state;
-        current_clock = 0;
+        current_clock = 1;
         arrival_time = None;
         io_device;
         layout;
@@ -152,7 +152,6 @@ module Config = struct
         m;
         b;
         r = { r with sr = set_gie_zero_if_backup r.sr };
-        exception_happened = false;
       }
 
   (* One instruction with max length availability *)
@@ -165,7 +164,7 @@ module Config = struct
     pure
       {
         io_state = io_device.init_state;
-        current_clock = 0;
+        current_clock = 1;
         arrival_time = None;
         io_device;
         layout;
@@ -173,7 +172,6 @@ module Config = struct
         m;
         b;
         r;
-        exception_happened = false;
       }
 
   let any_config_minimal =
@@ -218,29 +216,32 @@ module Io_device = struct
         delta = List.combine states all_transitions;
       }
 
-  let security_relevant_delta_transitions states when_interrupt =
-    states |> List.map succ
-    |> List.mapi (fun i next_state ->
-           {
-             main_transition =
-               (if i == when_interrupt then InterruptTransition next_state
-               else EpsilonTransition next_state);
-             read_transition = Some (Word.from_int i, next_state);
-             write_transitions = [];
-           })
-
   (*
     Linear automaton in which:
       - each transition is epsilon except for one at time `when_interrupt`
       - each transition points to the next state
       - always outputs the elapsed time from the start as read transition
+      - the last state makes the automata crash
   *)
+
+  let security_relevant_delta_transitions states when_interrupt =
+    states
+    |> List.map succ
+    |> List.mapi (fun i next_state ->
+      let current_state = i + 1 in
+      {
+        main_transition =
+          (if current_state == when_interrupt then InterruptTransition next_state
+          else EpsilonTransition next_state);
+        read_transition = Some (Word.from_int current_state, next_state);
+        write_transitions = [];
+      })
+
   let security_relevant_device states when_interrupt =
     let states = List.init states succ in
-    pure
       {
         states;
-        init_state = 0;
+        init_state = 1;
         delta = List.combine states (security_relevant_delta_transitions states when_interrupt);
       }
 end
@@ -273,17 +274,18 @@ module Instructions = struct
 
   let simple_instructions = List.filter (fun (p,_) -> is_simple_instr p) instr_generators
 
-  let n_cycles_simple_instruction n = oneof @@ List.filter_map (fun (p,i) -> if cycles p = n then Some i else None) simple_instructions
+  let n_cycles_simple_instruction n =
+    oneof @@ List.filter_map (fun (p,i) -> if cycles p = n then Some i else None) simple_instructions
 
   let rec n_cycles_simple_program n =
-    let gen max_cycles =
-      let* i_1_cycles = n_cycles_simple_instruction 1 in
-      let* i_2_cycles = n_cycles_simple_instruction 2 in
-      let* (i, c) = oneofl ([i_1_cycles, 1] @ (if max_cycles = 2 then [i_2_cycles, 2] else [])) in
+    let gen cycles_options =
+      let* (i, c) = frequency (List.map (fun c ->
+        (* The probability weight of the instruction is also its execution time :D *)
+        ((if c = 1 then 1 else 3), n_cycles_simple_instruction c >|= fun i -> (i, c))) cycles_options) in
       let* rest = n_cycles_simple_program (n - c) in
       pure (i :: rest) in
     match n with
-    | n when n > 2 -> gen 2
-    | n when n = 1 -> gen 1
+    | n when n >= 2 -> gen [1; 2]
+    | n when n = 1 -> gen [1]
     | _ -> pure []
 end

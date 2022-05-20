@@ -20,23 +20,23 @@ let memory_set_byte (a : address) (b : byte) (m : memory) =
 let memory_get (a : address) (m : memory) =
   Word.(
     compose_bytes
-      (memory_get_byte (a + from_int 1) m))
+      (memory_get_byte (Word.inc a) m))
       (memory_get_byte a m)
 
 let memory_set (a : address) (w : word) (m : memory) =
     Word.decompose_bytes w |> fun (h, l) ->
       m |> memory_set_byte a l
-        |> memory_set_byte Word.(a + from_int 1) h
+        |> memory_set_byte (Word.inc a) h
 
 let rec memory_set_words (a : address) (ws : word list) (m : memory) =
   match ws with
   | [] -> m
-  | w::ws -> memory_set_words Word.(a + from_int 2) ws (memory_set a w m)
+  | w::ws -> memory_set_words (Word.inc2 a) ws (memory_set a w m)
 
 let rec memory_get_words (a : address) (k : int) (m : memory) : word list =
   match k with
   | 0 -> []
-  | k -> memory_get a m :: memory_get_words Word.(a + from_int 2) (k - 1) m
+  | k -> memory_get a m :: memory_get_words (Word.inc2 a) (k - 1) m
 
 let string_of_memory m =
   m |> List.sort (fun (a,_) (b,_) -> Word.to_int a - Word.to_int b)
@@ -87,7 +87,14 @@ let is_enclave_code layout = is_in_range layout.enclave_code
 
 let is_enclave_data layout = is_in_range layout.enclave_data
 
-let is_enclave_entry_point layout addr = addr = layout.enclave_code.range_start
+(*
+  During memory access control checks, we check that the code at the enclave entry
+  point is executable. Since all instructions are at least two bytes long, both
+  bytes of the instruction must be marked as executable.
+*)
+let is_enclave_entry_point layout addr =
+     addr = layout.enclave_code.range_start
+  || addr = Word.inc layout.enclave_code.range_start
 
 let get_memory_type enc addr =
   if is_enclave_code enc addr then
@@ -126,6 +133,6 @@ let rec mac_region enc f right t bytes =
   | 0 -> true
   | _ ->
       mac enc f right t
-      && mac_region enc f right Word.(t + from_int 1) (bytes - 1)
+      && mac_region enc f right (Word.inc t) (bytes - 1)
 
 let mac_word enc f right w = mac_region enc f right w 2

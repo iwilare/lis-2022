@@ -71,4 +71,4 @@ let string_of_io_possibilities (s, p) =
 let string_of_io_device d =
   "States: " ^ String.concat ", " (List.map string_of_int d.states) ^
   "\nInit state: " ^ string_of_int d.init_state ^
-  "\nDelta:\n" ^ String.concat "\n" (List.map string_of_io_possibilities d.delta)
+  "\nDelta:\n" ^ String.concat "\n" (List.map string_of_io_possibilities d.delta) ^ "\n"

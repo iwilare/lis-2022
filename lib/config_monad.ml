@@ -52,11 +52,13 @@ let mset a w = modify (fun c -> {c with m = memory_set a w c.m})
 let rset r w = modify (fun c -> {c with r = register_set c.layout r w c.r})
 let rmodify r f = modify (fun c -> {c with r = register_set c.layout r (f (register_get r c.r)) c.r})
 let set_backup b = modify (fun c -> {c with b})
+let set_register_file r = modify (fun c -> {c with r})
 let set_pc_old pc_old = modify (fun c -> {c with pc_old})
 let set_io_state io_state = modify (fun c -> {c with io_state})
-let raise_exception k = modify (exception_config k)
+let raise_exception e k = halt (Exception(e,k)) (*modify (exception_config k)*)
 let increment_current_clock c = modify (fun c -> {c with current_clock = c.current_clock + 1}) c
 let clear_registers c = modify (fun c -> {c with r = register_file_0}) c
+let reset_last_arrival_time c = modify (fun c -> {c with arrival_time = None}) c
 
 let advance_config k =
   modify (fun c ->

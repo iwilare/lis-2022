@@ -15,8 +15,6 @@ type backup = {
 }
 
 type 'io_state config = {
-  (* Helper exception flag *)
-  exception_happened : bool;
   (* Memory layout *)
   layout : memory_layout;
   (* Global device *)
@@ -53,9 +51,6 @@ let load_here c = fun a -> memory_get a c.m
 let with_memory f c = f c.m
 
 let string_of_config c =
-  if c.exception_happened then
-    "<EXCEPTION OCCURRED>"
-  else
   "Layout: " ^ string_of_layout c.layout ^ "\nClock: "
   ^ string_of_time c.current_clock
   ^ "\tIO state: " ^ string_of_int c.io_state ^ "\tArrival time: "
@@ -69,24 +64,23 @@ let string_of_config c =
   ^ " [SR: " ^ Word.show c.r.sr ^ " (" ^ string_of_sr_flags c.r.sr ^ ")" ^ "]"
   ^ "\n"
   ^ string_of_register_file_gp c.r
+  ^ "\n"
 
 let init_config layout io_device memory =
   {
     io_device;
     layout;
     io_state = io_device.init_state;
-    current_clock = 0;
+    current_clock = 1;
     arrival_time = None;
     pc_old = w0xFFFE;
     m = memory;
     r = register_file_init memory;
     b = None;
-    exception_happened = false;
   }
 
 let exception_config extra_cycles c =
   { c with
-     exception_happened = true;
      current_clock = c.current_clock + extra_cycles;
      arrival_time = None;
      pc_old = w0xFFFE;
@@ -119,8 +113,8 @@ let rec mac_valid i c =
           && mac_word c.layout pc W (rget r2)
       | RETI ->
           (not (is_touching_last_word_address sp))
-          && (not (is_touching_last_word_address Word.(sp + from_int 1)))
+          && (not (is_touching_last_word_address (Word.inc sp)))
           && mac_word c.layout pc R sp
-          && mac_word c.layout pc R Word.(sp + from_int 1)
+          && mac_word c.layout pc R (Word.inc sp)
           (* Check that we can read PC and SP from the stack *)
       | _ -> true (* HALT should always be executable *))

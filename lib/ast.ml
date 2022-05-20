@@ -45,6 +45,8 @@ let size = function
 
 let max_instruction_size = 4
 
+let program_size xs = List.fold_left (+) 0 (List.map size xs)
+
 let cycles = function
   | RETI -> 5
   | NOP -> 1
@@ -63,10 +65,14 @@ let cycles = function
   | AND (_, _) -> 1
   | CMP (_, _) -> 1
 
-(* A simple instruction contains no jumps and does not interact with memory *)
+(* A simple instruction contains no jumps and does not interact with memory.
+   - 2 instructions with 2 cycles
+   - 6 instructions with 1 cycles
+*)
 let is_simple_instr = function
   | NOP
   | MOV (_, _)
+  | MOV_IMM (_, _)
   | NOT _
   | ADD (_, _)
   | SUB (_, _)

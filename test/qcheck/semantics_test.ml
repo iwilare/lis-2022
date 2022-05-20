@@ -212,7 +212,7 @@ let test_in_device =
         let expected_state, _, _ = advance c.io_device (cycles i - 1) (d', 0, None) in
         let after_r = register_get r c'.r in
         c'.io_state = expected_state && after_r = w)
-    ~predicate_halt:(Option.is_none transition)
+     ~predicate_halt:(Option.is_none transition)
   in
   let gen =
     QCheck2.Gen.(let* io_device = Io_device.device 5 5 in

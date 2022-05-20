@@ -35,7 +35,7 @@ module Semantics (I : Interrupt_logic) = struct
         match cpu_mode with
         | None -> halt ExecutingEnclaveData
         | Some UM -> halt HaltUM
-        | Some PM -> raise_exception (cycles i))
+        | Some PM -> raise_exception HaltPM (cycles i))
     | IN r -> (
         let@ read_transition in
         match read_transition with
@@ -59,9 +59,9 @@ module Semantics (I : Interrupt_logic) = struct
             (* Advance must do one cycle less *)
             I.interrupt_logic)
     | RETI -> (
-        let@ backup in
-        match backup with
-        | Some b -> (
+          let@ backup in
+          match backup with
+          | Some b -> (
             advance_config (cycles i) >>
             let@ arrival_time in
             let@ flag_gie in
@@ -73,7 +73,7 @@ module Semantics (I : Interrupt_logic) = struct
             | _ ->
                 (* CPU-Reti-PrePad *)
                 set_backup None >>
-                modify (fun c -> {c with r = b.r}) >>
+                set_register_file b.r >>
                 set_pc_old b.pc_old >>
                 (* CPU-Reti-Pad *)
                 advance_config b.t_pad >>
@@ -128,7 +128,7 @@ module Semantics (I : Interrupt_logic) = struct
     let* c = get in
     if not (mac_valid i c) then
       (* CPU-Violation-PM *)
-      raise_exception (cycles i)
+      raise_exception MemoryViolation (cycles i)
     else (
       let* pc = rget PC in
       (* Set PC old to the current PC *)
@@ -138,14 +138,18 @@ module Semantics (I : Interrupt_logic) = struct
       (* Check that the instruction is valid *)
       execute_instruction_semantics i)
 
-  let rec run () =
+  let auto_step () =
     let@ pc in
     let@ i = with_memory (fetch_and_decode pc) in
     match i with
-    | None -> raise_exception 0
-    | Some i ->
-      let* halted = catch_halt (step i) in
-      match halted with
-      | None -> run ()
-      | Some h -> halt h
+    | None -> raise_exception DecodeFail 0
+    | Some i -> step i
+
+  let rec run max_steps c =
+    match max_steps with
+    | 0 -> (TooMuchTime, c)
+    | max_steps ->
+      match auto_step () c with
+      | (`ok (), c') -> run Stdlib.(max_steps - 1) c'
+      | (`halt e, c') -> (e, c')
 end
