@@ -1,6 +1,6 @@
-open Lis2022.Instructions
-open Generators
+open Lis2022.Serialization
 open Lis2022.Memory
+open Generators
 
 let test_enc_dec_of_registers =
   let property i = reg_encode i |> reg_decode = Some i in
