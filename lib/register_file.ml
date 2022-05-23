@@ -30,18 +30,20 @@ type register_file = {
 }
 
 let string_of_register_file_gp r =
-  "[R3: " ^ Word.show r.r3 ^ "]" ^ " [R4: " ^ Word.show r.r4 ^ "]" ^ " [R5: "
-  ^ Word.show r.r5 ^ "]"
-  (*" [R6: " ^ Word.show r.r6 ^ "]" ^
-    " [R7: " ^ Word.show r.r7 ^ "]" ^
-    " [R8: " ^ Word.show r.r8 ^ "]" ^
-    " [R9: " ^ Word.show r.r9 ^ "]" ^
-    " [R10: " ^ Word.show r.r10 ^ "]" ^
-    " [R11: " ^ Word.show r.r11 ^ "]" ^
-    " [R12: " ^ Word.show r.r12 ^ "]" ^
-    " [R13: " ^ Word.show r.r13 ^ "]" ^
-    " [R14: " ^ Word.show r.r14 ^ "]" ^*) ^ " ..."
-  ^ " [R15: " ^ Word.show r.r15 ^ "]"
+  "[R3: " ^ Word.show r.r3 ^ "] " ^
+  "[R4: " ^ Word.show r.r4 ^ "] " ^
+  "[R5: " ^ Word.show r.r5 ^ "] " ^
+  "[R6: " ^ Word.show r.r6 ^ "] " ^
+  "[R7: " ^ Word.show r.r7 ^ "] " ^
+  "[R8: " ^ Word.show r.r8 ^ "] " ^
+  "[R9: " ^ Word.show r.r9 ^ "] " ^
+  "[R10: " ^ Word.show r.r10 ^ "] " ^
+  (* "[R11: " ^ Word.show r.r11 ^ "] " ^ *)
+  (* "[R12: " ^ Word.show r.r12 ^ "] " ^ *)
+  (* "[R13: " ^ Word.show r.r13 ^ "] " ^ *)
+  (* "[R14: " ^ Word.show r.r14 ^ "] " ^ *)
+  " ... " ^
+  "[R15: " ^ Word.show r.r15 ^ "]"
 
 let string_of_register = function
   | PC -> "PC"

@@ -55,7 +55,7 @@ let set_backup b = modify (fun c -> {c with b})
 let set_register_file r = modify (fun c -> {c with r})
 let set_pc_old pc_old = modify (fun c -> {c with pc_old})
 let set_io_state io_state = modify (fun c -> {c with io_state})
-let raise_exception e k = halt (Exception(e,k)) (*modify (exception_config k)*)
+let raise_exception e _ = halt e (*modify (exception_config k)*)
 let increment_current_clock c = modify (fun c -> {c with current_clock = c.current_clock + 1}) c
 let clear_registers c = modify (fun c -> {c with r = register_file_0}) c
 let reset_last_arrival_time c = modify (fun c -> {c with arrival_time = None}) c

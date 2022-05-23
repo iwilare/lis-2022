@@ -41,7 +41,7 @@ let test_operation name operation instruction =
       ~predicate_halt: false
   in
   let gen =
-    triple (Config.config_unprotected_minimal ()) Register.gp_register Register.gp_register
+    triple (Config.any_config_unprotected_no_mem ()) Register.gp_register Register.gp_register
   in
   QCheck2.Test.make
     ~name:(name ^ " changes the first register with the correct value")
@@ -59,7 +59,7 @@ let test_not =
       ~predicate_halt: false
   in
   let gen =
-    pair (Config.config_unprotected_minimal ()) Register.gp_register
+    pair (Config.any_config_unprotected_no_mem ()) Register.gp_register
   in
   QCheck2.Test.make ~name:"NOT changes the register with the correct value"
     ~print:(fun (c, r) -> printer_step (NOT r) c)
@@ -77,7 +77,7 @@ let test_mov =
   in
   let gen =
     triple
-      (Config.config_unprotected_minimal ())
+      (Config.any_config_unprotected_no_mem ())
       Register.gp_register Register.gp_register
   in
   QCheck2.Test.make
@@ -96,7 +96,7 @@ let test_movi =
   in
   let gen =
     triple
-      (Config.config_unprotected_minimal ())
+      (Config.any_config_unprotected_no_mem ())
       Memory.word Register.gp_register
   in
   QCheck2.Test.make
@@ -118,7 +118,7 @@ let test_load_um =
       ~predicate_halt: false
   in
   let gen =
-    QCheck2.Gen.((Config.config_unprotected_minimal ()) >>= fun config ->
+    QCheck2.Gen.((Config.any_config_unprotected_no_mem ()) >>= fun config ->
     quad (pure config) Register.gp_register Register.gp_register
       (Memory.unprotected_address config.layout))
   in
@@ -144,7 +144,7 @@ let test_store_um =
       ~predicate_halt: false
   in
   let gen =
-    QCheck2.Gen.(Config.config_unprotected_minimal () >>= fun config ->
+    QCheck2.Gen.(Config.any_config_unprotected_no_mem () >>= fun config ->
     quad (pure config) Register.gp_register Register.gp_register
       (Memory.unprotected_address config.layout))
   in
@@ -167,7 +167,7 @@ let test_jmp_um =
       ~predicate_halt: false
   in
   let gen =
-    QCheck2.Gen.(Config.config_unprotected_minimal () >>= fun config ->
+    QCheck2.Gen.(Config.any_config_unprotected_no_mem () >>= fun config ->
       triple (pure config) Register.gp_register (Memory.unprotected_address config.layout))
   in
   QCheck2.Test.make
@@ -192,7 +192,7 @@ let test_jz_um z_case =
       ~predicate_halt: false
   in
   let gen =
-    QCheck2.Gen.(Config.config_unprotected_minimal () >>= fun config ->
+    QCheck2.Gen.(Config.any_config_unprotected_no_mem () >>= fun config ->
       triple (pure config) Register.gp_register (Memory.unprotected_address config.layout))
   in
   QCheck2.Test.make
@@ -216,7 +216,7 @@ let test_in_device =
   in
   let gen =
     QCheck2.Gen.(let* io_device = Io_device.device 5 5 in
-                 pair (Config.config_unprotected_minimal () ~io_device) Register.gp_register)
+                 pair (Config.any_config_unprotected_no_mem () ~io_device) Register.gp_register)
   in
   QCheck2.Test.make ~name:"IN performs a read from the device" ~count:100000 gen property
 
@@ -239,7 +239,7 @@ let test_out_device =
   let gen =
     QCheck2.Gen.(let* io_device = Io_device.device 5 5 in
                  let word_to_write = 0 -- 16 >|= Word.from_int in
-                 triple (Config.config_unprotected_minimal () ~io_device) Register.gp_register word_to_write)
+                 triple (Config.any_config_unprotected_no_mem () ~io_device) Register.gp_register word_to_write)
   in
   QCheck2.Test.make ~name:"OUT performs a read from the device" ~count:100000 gen property
 

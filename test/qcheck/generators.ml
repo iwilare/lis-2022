@@ -133,8 +133,27 @@ module Config = struct
     let* t_pad = t_pad in
     pure { r; pc_old; t_pad }
 
+  (* Set at attacker position with backup = None *)
+  let attacker_config ?(io_device = default_io_device) () =
+    let* layout = Memory.layout in
+    (* PC availability is overridden anyway *)
+    let* r = Register.register_file_unprotected layout ~pc_availability:0 in
+    let m = default_memory in
+    pure
+      {
+        io_state = io_device.init_state;
+        current_clock = 1;
+        arrival_time = None;
+        io_device;
+        layout;
+        pc_old = w0xFFFE;
+        m;
+        b = None; (* Start with no backup *)
+        r = { r with pc = layout.attacker_range.range_start }; (* Start at the attacker position *)
+      }
+
   (* One instruction with max length availability *)
-  let config_unprotected_minimal ?(io_device = default_io_device) ?(pc_availability = max_instruction_size - 1) () =
+  let any_config_unprotected_no_mem ?(io_device = default_io_device) ?(pc_availability = max_instruction_size - 1) () =
     let* layout = Memory.layout in
     let* pc_old = Memory.unprotected_address layout in
     let* r = Register.register_file_unprotected layout ~pc_availability:pc_availability in
@@ -157,11 +176,11 @@ module Config = struct
       }
 
   (* One instruction with max length availability *)
-  let config_protected_minimal ?(io_device = default_io_device) ?(pc_availability = max_instruction_size - 1) () =
+  let any_config_protected_no_mem ?(io_device = default_io_device) ?(pc_availability = max_instruction_size - 1) () =
     let* layout = Memory.layout in
     let* pc_old = Memory.protected_address layout in
     let* r = Register.register_file_protected layout ~pc_availability:pc_availability in
-    let b = None in (* Always none because we are in protected mode *)
+    let b = None in (* Always None because we are in protected mode *)
     let m = default_memory in
     pure
       {
@@ -176,8 +195,8 @@ module Config = struct
         r;
       }
 
-  let any_config_minimal =
-    oneof [ config_unprotected_minimal (); config_protected_minimal (); ]
+  let any_config_no_mem =
+    oneof [ any_config_unprotected_no_mem (); any_config_protected_no_mem (); ]
 end
 
 module Io_device = struct

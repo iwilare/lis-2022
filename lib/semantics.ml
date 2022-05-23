@@ -24,7 +24,7 @@ module Semantics (I : Interrupt_logic) = struct
     let arithmetic_operation_semantics r1 r2 op ?(change_r2 = true) =
       let* v1 = rget r1 in
       let* v2 = rget r2 in
-      let v, overflow = op v1 v2 in
+      let v, overflow = op v2 v1 in
       (if change_r2 then rset r2 v else ok) >>
       set_status_register_flags v overflow >>
       epilogue
@@ -145,11 +145,8 @@ module Semantics (I : Interrupt_logic) = struct
     | None -> raise_exception DecodeFail 0
     | Some i -> step i
 
-  let rec run max_steps c =
-    match max_steps with
-    | 0 -> (TooMuchTime, c)
-    | max_steps ->
-      match auto_step () c with
-      | (`ok (), c') -> run Stdlib.(max_steps - 1) c'
-      | (`halt e, c') -> (e, c')
+  let rec run c =
+    match auto_step () c with
+    | (`ok (), c') -> run c'
+    | (`halt e, c') -> (e, c')
 end

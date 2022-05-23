@@ -7,10 +7,20 @@ open Lis2022.Memory
 open Lis2022.Halt_error
 open Lis2022.Register_file
 open Lis2022.Semantics
-open Lis2022.Types
 open Generators
 
 module M = Lis2022.Config_monad
+
+(*
+  - Construct the attacker in the unprotected and isr regions.
+  - Generate a 2 random programs, e1 and e2, in the enclave region N bytes with random timings, both of same total time
+  - Generate one (1) security-relevant linear clock-based io_device
+    - That always outputs the current clock
+    - Sometimes runs an interrupt
+  - Run with enclave1.
+  - Run with enclave2.
+  - Check if any of the attacker registers read with INs differ.
+*)
 
 module Non_interference (I : Interrupt_logic) = struct
   module S = Semantics(I)
@@ -23,21 +33,21 @@ module Non_interference (I : Interrupt_logic) = struct
 
   let test_non_interference_build_config ~attacker_program ~isr_program enclave1 enclave2 base_c =
     let context_memory =
-        base_c.m |> encode_and_put_program (isr base_c) (isr_program base_c)
-            |> encode_and_put_program (attacker base_c) (attacker_program base_c) in
+        base_c.m
+          |> encode_and_put_program (isr base_c) (isr_program base_c)
+          |> encode_and_put_program (attacker base_c) (attacker_program base_c) in
     let full_memory1 = context_memory |> encode_and_put_program base_c.layout.enclave_code.range_start enclave1 in
     let full_memory2 = context_memory |> encode_and_put_program base_c.layout.enclave_code.range_start enclave2 in
     let config1 = {base_c with m = full_memory1} in
     let config2 = {base_c with m = full_memory2} in
     (config1, config2)
 
-  let test_non_interference name ~count ~attacker_program ~isr_program ~enclave_epilogue ~n_cycles ~io_device_states =
+  let test_non_interference ?(max_fail = 1) name ~count ~attacker_program ~isr_program ~enclave_epilogue ~n_cycles ~halt_reason ~io_device_states =
     let property (enclave1,enclave2,base_c,_) =
-      let max_steps = 100 in
       let (config1, config2) = test_non_interference_build_config ~attacker_program ~isr_program enclave1 enclave2 base_c in
-      let (e, c) = S.run max_steps config1 in
-      let (e', c') = S.run max_steps config2 in
-      e = e' && c.r.r3 = c'.r.r3
+      let (e, c) = S.run config1 in
+      let (e', c') = S.run config2 in
+      e = halt_reason && e = e' && c.r.r3 = c'.r.r3
     in
     let gen =
       QCheck2.Gen.(
@@ -47,12 +57,15 @@ module Non_interference (I : Interrupt_logic) = struct
       let* when_interrupt = first_enclave_instruction -- (first_enclave_instruction + n_cycles - 1) in
       (* The first instruction in the enclave can only be at most two bytes long. *)
       let security_relevant_device = security_relevant_device io_device_states when_interrupt in
-      let* base_c = Config.config_unprotected_minimal ~io_device:security_relevant_device () in
+      (* Select as configuration the init config, where the attacker is ready. *)
+      let* base_c = Config.attacker_config ~io_device:security_relevant_device () in
+      (* Generate the two enclaves *)
       let* enclave1 = Instructions.n_cycles_simple_program n_cycles >|= (fun p -> [NOP] @ p @ enclave_epilogue base_c) in
       let* enclave2 = Instructions.n_cycles_simple_program n_cycles >|= (fun p -> [NOP] @ p @ enclave_epilogue base_c) in
       pure (enclave1,enclave2,base_c,when_interrupt)) in
     QCheck2.Test.make ~name:name
       ~count:count
+      ~max_fail:max_fail
       ~print:(fun (enclave1,enclave2,base_c,when_interrupt) ->
         let (config1, config2) = test_non_interference_build_config ~attacker_program ~isr_program enclave1 enclave2 base_c in
         "---- When interrupt ------------\n" ^ string_of_int when_interrupt ^ "\n" ^
@@ -71,6 +84,7 @@ let tests =
        ~count:300000
        ~n_cycles:4
        ~io_device_states:25
+       ~halt_reason: HaltUM
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
@@ -80,24 +94,27 @@ let tests =
        ~count:300000
        ~n_cycles:4
        ~io_device_states:25
-       ~isr_program:      (fun _ -> [IN(R3); HLT])
-       ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
-       ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
-    (* Tests should SOMETIMES not check *)
-    (let open Non_interference(Sancus_no_pad) in
-     test_non_interference "Sancus no_pad SOMETIMES preserves the enclave abstraction"
-       ~count:300000
-       ~n_cycles:4
-       ~io_device_states:25
+       ~halt_reason: HaltUM
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
     (* Tests must ALWAYS check *)
     (let open Non_interference(Sancus_pre_pad) in
     test_non_interference "Sancus pre_pad with standard NI attack ALWAYS preserves the enclave abstraction "
+      ~count:300000
+      ~n_cycles:4
+      ~io_device_states:25
+      ~halt_reason: HaltUM
+      ~isr_program:      (fun _ -> [IN(R3); HLT])
+      ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
+      ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
+    (* Tests should SOMETIMES not check *)
+    (let open Non_interference(Sancus_no_pad) in
+     test_non_interference "Sancus no_pad SOMETIMES preserves the enclave abstraction"
        ~count:300000
        ~n_cycles:4
        ~io_device_states:25
+       ~halt_reason: HaltUM
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
@@ -107,7 +124,8 @@ let tests =
        ~count:300000
        ~n_cycles:4
        ~io_device_states:40
+       ~halt_reason:      HaltPM
        ~isr_program:      (fun _ -> [RETI])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)] @ [IN(R3); HLT])
-       ~enclave_epilogue: (fun c -> [MOV_IMM(Word.(attacker c + from_int 6),R4);JMP R4]));
+       ~enclave_epilogue: (fun c -> [MOV_IMM(Lis2022.Types.Word.(attacker c + from_int 6),R4);JMP R4]));
   ]

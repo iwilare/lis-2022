@@ -54,15 +54,16 @@ let load_here c = fun a -> memory_get a c.m
 let with_memory f c = f c.m
 
 let string_of_config c =
-    "Instruction: " ^ (Option.fold (fetch_and_decode c.r.pc c.m) ~none:"<missing>" ~some:string_of_instr)
-  ^ "Layout: {" ^ string_of_layout c.layout ^ "}\nClock: "
-  ^ string_of_time c.current_clock
+    "Instruction: " ^ (Option.fold (fetch_and_decode c.r.pc c.m) ~none:"<invalid>" ~some:string_of_instr) ^ "\n"
+  ^ "Layout: {" ^ string_of_layout c.layout ^ "}" ^ " CPU MODE: " ^ Option.fold (cpu_mode c) ~none:"<invalid>" ~some:string_of_cpu_mode
+  ^ "\nClock: " ^ string_of_time c.current_clock
   ^ "\tIO state: " ^ string_of_int c.io_state ^ "\tArrival time: "
   ^ Option.fold ~none:"-" ~some:string_of_time c.arrival_time
   ^ "\tBackup: "
   ^ Option.fold ~none:"-"
       ~some:(fun b -> "<Yes> pad: " ^ string_of_time b.t_pad)
       c.b
+  ^ " [IO: " ^ string_of_io_possibilities (io_device_get_possibilities c.io_device c.io_state) ^ "]"
   ^ "\n[PC: " ^ Word.show_address c.r.pc ^ "]" ^ " [PCOLD: "
   ^ Word.show_address c.pc_old ^ "]" ^ " [SP: " ^ Word.show_address c.r.sp ^ "]"
   ^ " [SR: " ^ Word.show c.r.sr ^ " (" ^ string_of_sr_flags c.r.sr ^ ")" ^ "]"
@@ -85,9 +86,9 @@ let init_config layout io_device memory =
 
 let exception_config extra_cycles c =
   { c with
-     current_clock = c.current_clock + extra_cycles;
-     arrival_time = None;
-     pc_old = w0xFFFE;
-     b = None;
-     r = {register_file_0 with pc = memory_get w0xFFFE c.m};
+    current_clock = c.current_clock + extra_cycles;
+    arrival_time = None;
+    pc_old = w0xFFFE;
+    b = None;
+    r = {register_file_0 with pc = memory_get w0xFFFE c.m};
   }

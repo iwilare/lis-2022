@@ -104,7 +104,7 @@ let string_of_instr = function
 | NOP -> "NOP"
 | RETI -> "RETI"
 | HLT -> "HLT"
-| IN _ -> "IN"
+| IN r -> "IN " ^ string_of_register r
 | OUT r -> "OUT " ^ string_of_register r
 | JMP r -> "JMP " ^ string_of_register r
 | JZ r -> "JZ " ^ string_of_register r
