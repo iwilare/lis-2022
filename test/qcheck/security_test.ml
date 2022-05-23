@@ -19,7 +19,7 @@ module Non_interference (I : Interrupt_logic) = struct
       match S.auto_step () c with
       | `ok (), c' -> string_of_config c' ^ "\n" ^ go c'
       | `halt e, _ -> "<" ^ string_of_halt_error e ^ ">" in
-    "Initial configuration\n" ^ string_of_config c  ^ go c
+    string_of_config c ^ "\n" ^ go c
 
   let test_non_interference_build_config ~attacker_program ~isr_program enclave1 enclave2 base_c =
     let context_memory =
@@ -65,46 +65,46 @@ end
 
 let tests =
   [
-    (* Tests MUST check *)
+    (* Tests must ALWAYS check *)
     (let open Non_interference(Sancus_high) in
      test_non_interference "Sancus high ALWAYS preserves the enclave abstraction"
-       ~count:3000000
+       ~count:300000
        ~n_cycles:4
-       ~io_device_states:20
+       ~io_device_states:25
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
-    (* Tests MUST check *)
+    (* Tests must ALWAYS check *)
     (let open Non_interference(Sancus_low) in
      test_non_interference "Sancus low ALWAYS preserves the enclave abstraction"
-       ~count:3000000
+       ~count:300000
        ~n_cycles:4
-       ~io_device_states:20
+       ~io_device_states:25
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
-    (* Tests MUST (EVENTUALLY) NOT check *)
+    (* Tests should SOMETIMES not check *)
     (let open Non_interference(Sancus_no_pad) in
      test_non_interference "Sancus no_pad SOMETIMES preserves the enclave abstraction"
-       ~count:3000000
+       ~count:300000
        ~n_cycles:4
-       ~io_device_states:20
+       ~io_device_states:25
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
-    (* Tests MUST check *)
+    (* Tests must ALWAYS check *)
     (let open Non_interference(Sancus_pre_pad) in
     test_non_interference "Sancus pre_pad with standard NI attack ALWAYS preserves the enclave abstraction "
-       ~count:3000000
+       ~count:300000
        ~n_cycles:4
-       ~io_device_states:20
+       ~io_device_states:25
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
-    (* Tests MUST (EVENTUALLY) NOT check *)
+    (* Tests should SOMETIMES not check *)
     (let open Non_interference(Sancus_pre_pad) in
      test_non_interference "Sancus pre_pad with resume to end attack SOMETIMES preserves the enclave abstraction"
-       ~count:3000000
+       ~count:300000
        ~n_cycles:4
        ~io_device_states:40
        ~isr_program:      (fun _ -> [RETI])
