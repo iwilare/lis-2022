@@ -1,5 +1,5 @@
 open Memory
-open Ast
+open Instr
 open Config
 open Types
 open Layout

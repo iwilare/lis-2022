@@ -54,7 +54,7 @@ end
 module Register = struct
   open QCheck2.Gen
   open Lis2022.Register_file
-  open Lis2022.Ast
+  open Lis2022.Instr
   open Lis2022.Memory
   open Lis2022.Layout
   open Lis2022.Types.Word
@@ -118,14 +118,14 @@ module Config = struct
   open Lis2022.Memory
   open Lis2022.Io_device
   open Lis2022.Config
-  open Lis2022.Ast
+  open Lis2022.Instr
   open Lis2022.Register_file
 
   let default_memory = memory_init ()
 
   let default_io_device = default_io_device
 
-  let t_pad = 0 -- Lis2022.Ast.max_cycles
+  let t_pad = 0 -- Lis2022.Instr.max_cycles
 
   let backup layout =
     let* pc_old = Memory.protected_address layout in
@@ -220,7 +220,7 @@ module Io_device = struct
 end
 
 module Instructions = struct
-  open Lis2022.Ast
+  open Lis2022.Instr
   open QCheck2.Gen
   open Lis2022.Types
 

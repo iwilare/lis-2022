@@ -1,4 +1,4 @@
-open Ast
+open Instr
 open Types
 open Memory
 

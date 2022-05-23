@@ -1,9 +1,11 @@
+open Instr
 open Types
 open Memory
 open Io_device
 open Register_file
 open Layout
 open Cpu_mode
+open Serialization
 
 type time = int
 
@@ -52,13 +54,14 @@ let load_here c = fun a -> memory_get a c.m
 let with_memory f c = f c.m
 
 let string_of_config c =
-  "Layout: " ^ string_of_layout c.layout ^ "\nClock: "
+    "Instruction: " ^ (Option.fold (fetch_and_decode c.r.pc c.m) ~none:"<missing>" ~some:string_of_instr)
+  ^ "Layout: {" ^ string_of_layout c.layout ^ "}\nClock: "
   ^ string_of_time c.current_clock
   ^ "\tIO state: " ^ string_of_int c.io_state ^ "\tArrival time: "
   ^ Option.fold ~none:"-" ~some:string_of_time c.arrival_time
   ^ "\tBackup: "
   ^ Option.fold ~none:"-"
-      ~some:(fun b -> "pad(" ^ string_of_time b.t_pad ^ ")")
+      ~some:(fun b -> "<Yes> pad: " ^ string_of_time b.t_pad)
       c.b
   ^ "\n[PC: " ^ Word.show_address c.r.pc ^ "]" ^ " [PCOLD: "
   ^ Word.show_address c.pc_old ^ "]" ^ " [SP: " ^ Word.show_address c.r.sp ^ "]"

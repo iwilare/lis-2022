@@ -1,4 +1,4 @@
-open Lis2022.Ast
+open Lis2022.Instr
 open Lis2022.Config
 open Lis2022.Serialization
 open Lis2022.Interrupt_logic
@@ -53,14 +53,12 @@ Experiment 2
   ---------------------------------------------------------------------
 *)
 
-let show_step = function
-  | `ok (), c -> string_of_config c
-  | `halt e, _ -> "<" ^ string_of_halt_error e ^ ">"
-
-let rec monad_iterate n m =
-  match n with
-  | 0 -> M.pure ()
-  | n -> M.(m >> monad_iterate (n-1) m)
+let print_execution_trace c =
+  let rec go c =
+    match S.auto_step () c with
+    | `ok (), c' -> string_of_config c' ^ "\n" ^ go c'
+    | `halt e, _ -> "<" ^ string_of_halt_error e ^ ">" in
+  string_of_config c ^ "\n" ^ go c
 
 let test_no_pad_enclave_map_build_config enclave base_c =
   let attacker_out_address_in_memory = Word.(base_c.layout.attacker_range.range_end - from_int 1) in
@@ -120,8 +118,7 @@ let test_no_pad_enclave_map name ~count =
     ~print:(fun (enclave,base_c) ->
         let (_, c) = test_no_pad_enclave_map_build_config enclave base_c in
         "---- Enclave instructions ------\n" ^ String.concat "," (List.map string_of_instr enclave) ^ "\n" ^
-        "---- Initial configuration -----\n" ^ string_of_config c ^ "\n" ^
-        String.concat "\n" (List.map (fun i -> "\n" ^ string_of_int i ^ "\n" ^ show_step (monad_iterate i (S.auto_step ()) c)) [1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16;17;18;19;20]))
+        "---- Trace ---------------------\n" ^ print_execution_trace c ^ "\n")
     gen property
 
 let tests =

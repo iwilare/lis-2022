@@ -1,4 +1,4 @@
-open Ast
+open Instr
 open Config
 open Halt_error
 open Types

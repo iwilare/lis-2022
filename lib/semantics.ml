@@ -1,4 +1,4 @@
-open Ast
+open Instr
 open Config
 open Config_monad
 open Halt_error

@@ -1,5 +1,5 @@
 open Types
-open Ast
+open Instr
 open Memory
 open Cpu_mode
 

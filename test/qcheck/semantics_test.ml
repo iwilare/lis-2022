@@ -3,7 +3,7 @@ open QCheck2.Gen
 open Lis2022.Register_file
 open Lis2022.Config
 open Lis2022.Memory
-open Lis2022.Ast
+open Lis2022.Instr
 open Lis2022.Io_device
 open Lis2022.Types
 open Lis2022.Semantics
