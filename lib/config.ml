@@ -2,7 +2,8 @@ open Types
 open Memory
 open Io_device
 open Register_file
-open Ast
+open Layout
+open Cpu_mode
 
 type time = int
 
@@ -87,34 +88,3 @@ let exception_config extra_cycles c =
      b = None;
      r = {register_file_0 with pc = memory_get w0xFFFE c.m};
   }
-
-let rec mac_valid i c =
-  let rget r = register_get r c.r in
-  let pc_old = c.pc_old in
-  let pc = c.r.pc in
-  let sp = c.r.sp in
-  match c.b with
-  | Some _ ->
-      (match i with
-      | RETI -> true
-      | _ -> mac_valid i { c with b = None } && not (flag_gie c))
-      && not (is_enclave_entry_point c.layout pc)
-  | None -> (
-      (* Check all current instruction bytes *)
-      mac_region c.layout pc_old X pc (size i)
-      &&
-      match i with
-      | IN _ | OUT _ -> cpu_mode c = Some UM
-      | MOV_LOAD (r1, _) ->
-          (not (is_touching_last_word_address (rget r1)))
-          && mac_word c.layout pc R (rget r1)
-      | MOV_STORE (_, r2) ->
-          (not (is_touching_last_word_address (rget r2)))
-          && mac_word c.layout pc W (rget r2)
-      | RETI ->
-          (not (is_touching_last_word_address sp))
-          && (not (is_touching_last_word_address (Word.inc sp)))
-          && mac_word c.layout pc R sp
-          && mac_word c.layout pc R (Word.inc sp)
-          (* Check that we can read PC and SP from the stack *)
-      | _ -> true (* HALT should always be executable *))

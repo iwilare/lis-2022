@@ -1,12 +1,12 @@
-open Memory
-open Register_file
 open Ast
 open Config
+open Config_monad
 open Halt_error
 open Interrupt_logic
+open Mac
+open Register_file
+open Serialization
 open Types.Word
-open Config_monad
-open Instructions
 
 module Semantics (I : Interrupt_logic) = struct
   let execute_instruction_semantics i =

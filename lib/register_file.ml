@@ -1,6 +1,7 @@
 open Types
 open Ast
 open Memory
+open Cpu_mode
 
 let zero : word = Word.from_int 0b00000000
 let mask_gie : word = Word.from_int 0b00001000

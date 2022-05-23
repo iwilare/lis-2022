@@ -1,4 +1,3 @@
-open Memory
 open Ast
 open Config
 open Halt_error

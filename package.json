@@ -5,16 +5,16 @@
         "build":"dune build -p lis2022"
     },
     "scripts": {
-        "test-force": "esy b dune runtest -f --profile release"
+        "test": "esy b dune runtest -f"
       },
     "dependencies": {
         "ocaml":"4.13.x",
-        "@opam/dune":"*"
+        "@opam/dune":"*",
+        "@opam/qcheck":"*"
     },
 
     "devDependencies": {
-        "@opam/ocaml-lsp-server": "*",
-        "@opam/qcheck":"*"
+        "@opam/ocaml-lsp-server": "*"
 
     }
 }

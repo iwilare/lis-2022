@@ -9,6 +9,7 @@ module Memory = struct
   open QCheck2.Gen
   open Lis2022.Memory
   open Lis2022.Types
+  open Lis2022.Layout
   open Lis2022.Types.Word
 
   let word = 0x0000 -- 0xFFFF >|= from_int
@@ -55,6 +56,7 @@ module Register = struct
   open Lis2022.Register_file
   open Lis2022.Ast
   open Lis2022.Memory
+  open Lis2022.Layout
   open Lis2022.Types.Word
 
   let sr_mask = oneofl [ mask_c; mask_gie; mask_n; mask_v; mask_z ]
@@ -214,35 +216,6 @@ module Io_device = struct
         states;
         init_state;
         delta = List.combine states all_transitions;
-      }
-
-  (*
-    Linear automaton in which:
-      - each transition is epsilon except for one at time `when_interrupt`
-      - each transition points to the next state
-      - always outputs the elapsed time from the start as read transition
-      - the last state makes the automata crash
-  *)
-
-  let security_relevant_delta_transitions states when_interrupt =
-    states
-    |> List.map succ
-    |> List.mapi (fun i next_state ->
-      let current_state = i + 1 in
-      {
-        main_transition =
-          (if current_state == when_interrupt then InterruptTransition next_state
-          else EpsilonTransition next_state);
-        read_transition = Some (Word.from_int current_state, next_state);
-        write_transitions = [];
-      })
-
-  let security_relevant_device states when_interrupt =
-    let states = List.init states succ in
-      {
-        states;
-        init_state = 1;
-        delta = List.combine states (security_relevant_delta_transitions states when_interrupt);
       }
 end
 

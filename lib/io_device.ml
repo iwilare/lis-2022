@@ -72,3 +72,65 @@ let string_of_io_device d =
   "States: " ^ String.concat ", " (List.map string_of_int d.states) ^
   "\nInit state: " ^ string_of_int d.init_state ^
   "\nDelta:\n" ^ String.concat "\n" (List.map string_of_io_possibilities d.delta) ^ "\n"
+
+
+(* Now follow some useful example devices. *)
+
+(*
+  Linear automaton in which:
+    - each transition is epsilon except for one at time `when_interrupt`
+    - each transition points to the next state
+    - always outputs the elapsed time from the start as read transition
+    - the last state makes the automata crash
+*)
+
+let security_relevant_device n_states when_interrupt =
+  let states = List.init n_states succ in
+  let delta_transitions =
+    states
+    |> List.map succ
+    |> List.mapi (fun i next_state ->
+      let current_state = i + 1 in
+      {
+        main_transition =
+          (if current_state == when_interrupt then InterruptTransition next_state
+          else EpsilonTransition next_state);
+        read_transition = Some (Word.from_int current_state, next_state);
+        write_transitions = [];
+      }) in
+    {
+      states;
+      init_state = 1;
+      delta = List.combine states delta_transitions;
+    }
+
+let circular_on_demand_interrupt_io_device interrupt_delay max_post_interrupt_clock_length =
+  let special_input_value = Word.from_int 42 in
+  let states = List.init ((1 + interrupt_delay + max_post_interrupt_clock_length) + 1) succ in
+  let delta_transitions =
+    states
+    |> List.map (fun i ->
+      let next = i + 1 in
+      if i == 1 then
+        {
+          main_transition = EpsilonTransition 1;
+          read_transition = None;
+          write_transitions = [(special_input_value, 2)]
+        }
+      else if 2 <= i && i <= interrupt_delay + 2 then
+        {
+          main_transition = if i == interrupt_delay + 2 then InterruptTransition next else EpsilonTransition next;
+          read_transition = None;
+          write_transitions = []
+        }
+      else (* (interrupt_delay + 2) + 1 <= i < ((interrupt_delay + 2) + 1) + max_post_interrupt_clock_length *)
+        {
+          main_transition = EpsilonTransition next;
+          read_transition = Some (Word.from_int (i - (interrupt_delay + 2)), next);
+          write_transitions = [(special_input_value, 1)]
+        }) in
+  {
+    states;
+    init_state = 1;
+    delta = List.combine states delta_transitions
+  }

@@ -1,6 +1,7 @@
 open Ast
 open Types
 open Memory
+
 let reg_encode r =
   let rval =
     match r with

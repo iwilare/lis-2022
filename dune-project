@@ -7,22 +7,22 @@
 (source
  (github username/reponame))
 
-(authors "Author Name")
+(authors "")
 
-(maintainers "Maintainer Name")
+(maintainers "<the same as above>")
 
-(license LICENSE)
+(license MIT)
 
 (documentation https://url/to/documentation)
 
 (package
  (name lis2022)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Project for the Laboratory for Innovative Software course 2021/2022")
+ (description "This project is an OCaml emulator for the Sancus microprocessor, along with property-based tests to verify correctness and security properties of the CPU implementation and its model.")
  (depends
  (ocaml (>="4.13.0"))
   dune)
- (tags
-  (topics "to describe" your project)))
+ (tags (sancus cpu-emulation security-based-compilation))
+ (allow_empty))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
