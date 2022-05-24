@@ -1,14 +1,42 @@
 open Types
-open Instr
 open Memory
 open Cpu_mode
 
-let zero : word = Word.from_int 0b00000000
-let mask_gie : word = Word.from_int 0b00001000
-let mask_v : word = Word.from_int 0b00010000
-let mask_n : word = Word.from_int 0b00100000
-let mask_z : word = Word.from_int 0b01000000
-let mask_c : word = Word.from_int 0b10000000
+type register =
+  | PC
+  | SP
+  | SR
+  | R3
+  | R4
+  | R5
+  | R6
+  | R7
+  | R8
+  | R9
+  | R10
+  | R11
+  | R12
+  | R13
+  | R14
+  | R15
+
+let string_of_register = function
+| PC -> "PC"
+| SP -> "SP"
+| SR -> "SR"
+| R3 -> "R3"
+| R4 -> "R4"
+| R5 -> "R5"
+| R6 -> "R6"
+| R7 -> "R7"
+| R8 -> "R8"
+| R9 -> "R9"
+| R10 -> "R10"
+| R11 -> "R11"
+| R12 -> "R12"
+| R13 -> "R13"
+| R14 -> "R14"
+| R15 -> "R15"
 
 type register_file = {
   pc : word;
@@ -45,24 +73,6 @@ let string_of_register_file_gp r =
   " ... " ^
   "[R15: " ^ Word.show r.r15 ^ "]"
 
-let string_of_register = function
-  | PC -> "PC"
-  | SP -> "SP"
-  | SR -> "SR"
-  | R3 -> "R3"
-  | R4 -> "R4"
-  | R5 -> "R5"
-  | R6 -> "R6"
-  | R7 -> "R7"
-  | R8 -> "R8"
-  | R9 -> "R9"
-  | R10 -> "R10"
-  | R11 -> "R11"
-  | R12 -> "R12"
-  | R13 -> "R13"
-  | R14 -> "R14"
-  | R15 -> "R15"
-
 let register_get reg r =
   match reg with
   | PC -> r.pc
@@ -86,6 +96,13 @@ let get_bit mask x = Word.(x land mask > zero)
 
 let set_bit mask b (x : word) =
   Word.(if b then x lor mask else x land lnot mask)
+
+let zero : word = Word.from_int 0b00000000
+let mask_gie : word = Word.from_int 0b00001000
+let mask_v : word = Word.from_int 0b00010000
+let mask_n : word = Word.from_int 0b00100000
+let mask_z : word = Word.from_int 0b01000000
+let mask_c : word = Word.from_int 0b10000000
 
 let string_of_sr_flags sr =
   let string_of_bool b = if b then "1" else "0" in

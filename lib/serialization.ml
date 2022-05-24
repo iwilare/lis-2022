@@ -1,3 +1,4 @@
+open Register_file
 open Instr
 open Types
 open Memory

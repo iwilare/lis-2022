@@ -80,7 +80,7 @@ let test_no_pad_enclave_map name ~count =
     ~print:(fun (enclave,base_c) ->
         let (attacker_memory_start,c) = test_no_pad_enclave_map_build_config enclave base_c in
         let enclave_map = List.map Word.from_int (List.map cycles enclave) in
-        let (e, c') = S.run c in
+        let (_, c') = S.run c in
         string_of_io_device base_c.io_device ^
         "---- Attacker memory start -----\n" ^ Word.show_address attacker_memory_start ^ "\n" ^
         "---- Enclave instructions ------\n" ^ String.concat "," (List.map string_of_instr enclave) ^ "\n" ^

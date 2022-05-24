@@ -54,7 +54,6 @@ end
 module Register = struct
   open QCheck2.Gen
   open Lis2022.Register_file
-  open Lis2022.Instr
   open Lis2022.Memory
   open Lis2022.Layout
   open Lis2022.Types.Word
