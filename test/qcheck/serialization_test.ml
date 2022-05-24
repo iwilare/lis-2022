@@ -22,4 +22,8 @@ let test_enc_dec_of_instructions_in_memory =
   ~print:(fun (m, a, i) -> Lis2022.Instr.string_of_instr i ^ "\n" ^ string_of_memory (m |> encode_and_put a i))
   gen property
 
-let tests = [ test_enc_dec_of_registers; test_enc_dec_of_instructions; test_enc_dec_of_instructions_in_memory]
+let tests = [
+  test_enc_dec_of_registers;
+  test_enc_dec_of_instructions;
+  test_enc_dec_of_instructions_in_memory
+]

@@ -91,5 +91,5 @@ let test_no_pad_enclave_map name ~count =
 let tests =
   [
      test_no_pad_enclave_map "Sancus no_pad allows attackers to fully map instructions timings of the enclave"
-     ~count:300000
+     ~count:3000
   ]

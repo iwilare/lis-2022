@@ -34,7 +34,7 @@ let test_operation name operation instruction =
         let after_r2 = register_get r2 c'.r in
         let before_r1 = register_get r1 c.r in
         let before_r2 = register_get r2 c.r in
-        let result, op_overflow = operation before_r1 before_r2 in
+        let result, op_overflow = operation before_r2 before_r1 in
         let unchanged_r1 = r1 = r2 || after_r1 = before_r1 in
         let changed_r2 = after_r2 = result in
         (op_overflow = flag_v c') && unchanged_r1 && changed_r2)
