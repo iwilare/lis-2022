@@ -33,7 +33,7 @@ let test_memory_set_words_get_words =
     let address = address_in_range {range_start = Word.zero; range_end = Word.(w0xFFFE - from_int n)} in
     QCheck2.Gen.triple memory address (QCheck2.Gen.list_size (pure n) word) in
   QCheck2.Test.make
-    ~name:"Memory set memory get of bytes returns the initial value" ~count:20000
+    ~name:"Memory set memory get of multiple words returns the initial value" ~count:20000
     gen property
 
 let test_decompose_compose =
@@ -51,7 +51,7 @@ let test_compose_decompose =
   in
   let gen = QCheck2.Gen.pair byte byte in
   QCheck2.Test.make
-    ~name:"Decompose words is the inverse of compose words" ~count:20000
+    ~name:"Compose words is the inverse of decompose words" ~count:20000
     gen property
 
 let tests = [
