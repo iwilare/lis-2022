@@ -38,7 +38,7 @@ let test_no_pad_enclave_map_build_config enclave base_c =
     IN R3; (* R3: instr_length *)
     MOV_IMM(Word.from_int 42, R4);
     MOV_IMM(Word.from_int 2, R6);
-    MOV_IMM(Word.from_int (cycles RETI + 1), R10);
+    MOV_IMM(Word.from_int 6, R10); (* Interrupt logic timing *)
     MOV_IMM(attacker_out_address_in_memory, R5);
     OUT(R4);           (* Stop the clock to state 1 *)
     MOV_LOAD(R5, R7);  (* R5: &counter, R7: counter *)
