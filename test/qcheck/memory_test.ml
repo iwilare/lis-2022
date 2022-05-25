@@ -3,6 +3,12 @@ open Lis2022.Types
 open QCheck2.Gen
 open Generators.Memory
 
+let test_align_even =
+  let property x =
+    Word.(if x land one = zero then align_even x = x else align_even x = x - one)
+  in
+  let gen = Generators.Memory.address in
+  QCheck2.Test.make ~name:"Align even always returns the correct even address" ~count:20000 gen property
 let test_byte_set_get =
   let property (m, a, v) =
     (m |> memory_set_byte a v
@@ -55,6 +61,7 @@ let test_compose_decompose =
     gen property
 
 let tests = [
+  test_align_even;
   test_byte_set_get;
   test_word_set_get;
   test_memory_set_words_get_words;
