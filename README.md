@@ -41,5 +41,5 @@ esy
 
 - Run tests in sandbox 
 ```bash
-esy test-force
+esy test
 ```
