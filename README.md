@@ -38,5 +38,5 @@ From the root of the project:
     ```
 - Run tests in sandbox
     ```bash
-    esy test-force
+    esy test
     ```
