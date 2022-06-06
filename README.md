@@ -2,8 +2,7 @@
 
 ### Dependencies
 
-Ocamel https://ocaml.org/docs/install.html
-
+OCaml https://ocaml.org/docs/install.html
 
 ```bash
 opam install qcheck
@@ -12,11 +11,11 @@ opam install qcheck
 
 From the root of the project:
 - Basic build, :
-    ```bash 
+    ```bash
     dune build
     ```
 - Release build, ignores unused errors:
-    ```bash 
+    ```bash
     dune build --profile release
     ```
 - Run tests:
@@ -24,22 +23,20 @@ From the root of the project:
     dune test
     ```
 - Run executable:
-    ```bash 
+    ```bash
     dune exec lis2022
     ```
-## Esy 
+## Esy
 
-- Install esy 
-
-```bash
-npm install -g esy 
-``` 
-- Build sandbox and project 
-```bash 
-esy 
-```
-
-- Run tests in sandbox 
-```bash
-esy test-force
-```
+- Install esy
+    ```bash
+    npm install -g esy
+    ```
+- Build sandbox and project
+    ```bash
+    esy
+    ```
+- Run tests in sandbox
+    ```bash
+    esy test-force
+    ```

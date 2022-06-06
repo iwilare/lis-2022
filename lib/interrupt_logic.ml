@@ -4,11 +4,7 @@ open Halt_error
 open Types
 open Config_monad
 
-module type Interrupt_logic = sig
-  val interrupt_logic : (unit, 'io_device) m
-end
-
-let interrupt_logic ~pre_padding ~post_padding c =
+let sancus_interrupt_logic ~pre_padding ~post_padding c =
   (let@ arrival_time in
   let@ flag_gie in
   match arrival_time with
@@ -44,16 +40,20 @@ let interrupt_logic ~pre_padding ~post_padding c =
           reset_last_arrival_time (* Ignore any interrupt arrived during this last advance *))
   | _ -> ok) c
 
+module type Interrupt_logic = sig
+  val interrupt_logic : (unit, 'io_device) m
+end
+
 module Sancus_low = struct
-  let interrupt_logic c = interrupt_logic ~pre_padding:true ~post_padding:true c
+  let interrupt_logic c = sancus_interrupt_logic ~pre_padding:true ~post_padding:true c
 end
 
 module Sancus_pre_pad = struct
-  let interrupt_logic c = interrupt_logic ~pre_padding:true ~post_padding:false c
+  let interrupt_logic c = sancus_interrupt_logic ~pre_padding:true ~post_padding:false c
 end
 
 module Sancus_no_pad = struct
-  let interrupt_logic c = interrupt_logic ~pre_padding:false ~post_padding:false c
+  let interrupt_logic c = sancus_interrupt_logic ~pre_padding:false ~post_padding:false c
 end
 
 module Sancus_high = struct

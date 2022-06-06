@@ -110,7 +110,7 @@ let test_load_um =
     let c = {c with r = register_set c.layout r1 unprotected_addr c.r} in
     step_and_check_instruction (MOV_LOAD (r1, r2)) c
       ~predicate_ok: (fun c' ->
-        let before_r1 = register_get r1 c'.r in
+        let before_r1 = register_get r1 c.r in
         let after_r1 = register_get r1 c'.r in
         let unchanged_r1 = r1 == r2 || after_r1 = before_r1 in
         let changed_r2 = register_get r2 c'.r == memory_get before_r1 c.m in
