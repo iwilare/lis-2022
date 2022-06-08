@@ -7,6 +7,7 @@ open Lis2022.Memory
 open Lis2022.Halt_error
 open Lis2022.Register_file
 open Lis2022.Semantics
+open Lis2022.Types
 open Generators
 
 module M = Lis2022.Config_monad
@@ -21,6 +22,8 @@ module M = Lis2022.Config_monad
   - Run with enclave2.
   - Check if any of the attacker registers read with INs differ.
 *)
+
+let view_complete_trace = false
 
 module Non_interference (I : Interrupt_logic) = struct
   module S = Semantics(I)
@@ -68,11 +71,18 @@ module Non_interference (I : Interrupt_logic) = struct
       ~max_fail:max_fail
       ~print:(fun (enclave1,enclave2,base_c,when_interrupt) ->
         let (config1, config2) = test_non_interference_build_config ~attacker_program ~isr_program enclave1 enclave2 base_c in
-        "---- When interrupt ------------\n" ^ string_of_int when_interrupt ^ "\n" ^
+        let (_, c1) = S.run config1 in
+        let (_, c2) = S.run config2 in
+        "---- When to interrupt ---------\n" ^ string_of_int when_interrupt ^ "\n" ^
         "---- Enclave 1 instructions ----\n" ^ String.concat "," (List.map string_of_instr enclave1) ^ "\n" ^
         "---- Enclave 2 instructions ----\n" ^ String.concat "," (List.map string_of_instr enclave2) ^ "\n" ^
-        "---- Trace 1 -------------------\n" ^ print_execution_trace config1 ^ "\n" ^
-        "---- Trace 2 -------------------\n" ^ print_execution_trace config2 ^ "\n")
+        (if view_complete_trace then
+            "---- Trace 1 -------------------\n" ^ print_execution_trace config1 ^ "\n" ^
+            "---- Trace 2 -------------------\n" ^ print_execution_trace config2
+         else
+            "---- Values in R3 -------------------\n" ^
+            "  Enclave 1: final R3 value =" ^ Word.show (c1.r.r3) ^ "\n" ^
+            "  Enclave 2: final R3 value =" ^ Word.show (c2.r.r3)))
   gen property
 end
 
@@ -84,7 +94,7 @@ let tests =
        ~count:30000
        ~n_cycles:4
        ~io_device_states:25
-       ~halt_reason: HaltUM
+       ~halt_reason:      HaltUM
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
@@ -94,7 +104,7 @@ let tests =
        ~count:30000
        ~n_cycles:4
        ~io_device_states:25
-       ~halt_reason: HaltUM
+       ~halt_reason:      HaltUM
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
@@ -104,7 +114,7 @@ let tests =
       ~count:30000
       ~n_cycles:4
       ~io_device_states:25
-      ~halt_reason: HaltUM
+      ~halt_reason:      HaltUM
       ~isr_program:      (fun _ -> [IN(R3); HLT])
       ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
       ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
@@ -114,7 +124,7 @@ let tests =
        ~count:30000
        ~n_cycles:4
        ~io_device_states:25
-       ~halt_reason: HaltUM
+       ~halt_reason:      HaltUM
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
        ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
@@ -124,7 +134,7 @@ let tests =
        ~count:30000
        ~n_cycles:4
        ~io_device_states:40
-       ~halt_reason:      HaltPM
+       ~halt_reason:      HaltUM
        ~isr_program:      (fun _ -> [RETI])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)] @ [IN(R3); HLT])
        ~enclave_epilogue: (fun c -> [MOV_IMM(Lis2022.Types.Word.(attacker c + from_int 6),R4);JMP R4]));
