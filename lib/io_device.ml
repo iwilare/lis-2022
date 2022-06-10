@@ -24,9 +24,15 @@ let io_device_get_possibilities io_device state =
   | None -> failwith @@ "Delta undefined"
   | Some p -> p
 
-let io_device_write_transitions io_device state word = (fun p -> List.assoc_opt word p.write_transitions) (io_device_get_possibilities io_device state)
-let io_device_read_transition io_device state = (fun p -> p.read_transition) (io_device_get_possibilities io_device state)
-let io_device_main_transition io_device state = (fun p -> p.main_transition) (io_device_get_possibilities io_device state)
+let io_device_write_transitions io_device state word =
+  (fun p -> List.assoc_opt word p.write_transitions)
+    (io_device_get_possibilities io_device state)
+
+let io_device_read_transition io_device state =
+  (fun p -> p.read_transition) (io_device_get_possibilities io_device state)
+
+let io_device_main_transition io_device state =
+  (fun p -> p.main_transition) (io_device_get_possibilities io_device state)
 
 let rec advance device (k : int) ((io_state, t, arrival_time) as c) =
   match k with
@@ -50,13 +56,15 @@ let default_io_device : int io_device =
     init_state = 1;
     delta =
       List.init default_max_states succ (* [1..32] *)
-        |> List.map (fun d ->
-                       (d, {
-                             main_transition = EpsilonTransition d;
-                             read_transition = None;
-                             write_transitions = List.init default_max_words succ
-                                              |> List.map (fun w -> (Word.from_int w, w));
-                           }));
+      |> List.map (fun d ->
+             ( d,
+               {
+                 main_transition = EpsilonTransition d;
+                 read_transition = None;
+                 write_transitions =
+                   List.init default_max_words succ
+                   |> List.map (fun w -> (Word.from_int w, w));
+               } ));
   }
 
 let string_of_io_possibilities p =
@@ -64,15 +72,21 @@ let string_of_io_possibilities p =
   | EpsilonTransition d -> "ε" ^ "(" ^ string_of_int d ^ ")"
   | InterruptTransition d -> "INT" ^ "(" ^ string_of_int d ^ ")")
   ^ ", "
-  ^ (Option.fold p.read_transition ~none:"NO_READ" ~some:(fun (w,c) -> "READ(" ^ Word.show w ^ ", goto:" ^  string_of_int c ^ ")"))
-  ^ ", write targets: [" ^ String.concat "," (List.map (fun (w,_) -> Word.show w) p.write_transitions) ^ "]"
+  ^ Option.fold p.read_transition ~none:"NO_READ" ~some:(fun (w, c) ->
+        "READ(" ^ Word.show w ^ ", goto:" ^ string_of_int c ^ ")")
+  ^ ", write targets: ["
+  ^ String.concat "," (List.map (fun (w, _) -> Word.show w) p.write_transitions)
+  ^ "]"
 
 let string_of_io_device d =
-  let io_transitions (s,p) = "State: " ^ string_of_int s ^ ", " ^ string_of_io_possibilities p in
-  "States: " ^ String.concat ", " (List.map string_of_int d.states) ^
-  "\nInit state: " ^ string_of_int d.init_state ^
-  "\nDelta:\n" ^ String.concat "\n" (List.map io_transitions d.delta) ^ "\n"
-
+  let io_transitions (s, p) =
+    "State: " ^ string_of_int s ^ ", " ^ string_of_io_possibilities p
+  in
+  "States: "
+  ^ String.concat ", " (List.map string_of_int d.states)
+  ^ "\nInit state: " ^ string_of_int d.init_state ^ "\nDelta:\n"
+  ^ String.concat "\n" (List.map io_transitions d.delta)
+  ^ "\n"
 
 (* Now follow some useful example devices. *)
 
@@ -87,22 +101,19 @@ let string_of_io_device d =
 let security_relevant_device n_states when_interrupt =
   let states = List.init n_states succ in
   let delta_transitions =
-    states
-    |> List.map succ
+    states |> List.map succ
     |> List.mapi (fun i next_state ->
-      let current_state = i + 1 in
-      {
-        main_transition =
-          (if current_state == when_interrupt then InterruptTransition next_state
-          else EpsilonTransition next_state);
-        read_transition = Some (Word.from_int current_state, next_state);
-        write_transitions = [];
-      }) in
-    {
-      states;
-      init_state = 1;
-      delta = List.combine states delta_transitions;
-    }
+           let current_state = i + 1 in
+           {
+             main_transition =
+               (if current_state == when_interrupt then
+                InterruptTransition next_state
+               else EpsilonTransition next_state);
+             read_transition = Some (Word.from_int current_state, next_state);
+             write_transitions = [];
+           })
+  in
+  { states; init_state = 1; delta = List.combine states delta_transitions }
 
 (*
   Linear automaton in which:
@@ -117,34 +128,41 @@ let security_relevant_device n_states when_interrupt =
 *)
 
 let on_demand_interrupt_clock_io_device_special_input_value = Word.from_int 42
+
 let on_demand_interrupt_clock_io_device interrupt_delay max_clock_length =
-  let states = List.init ((1 + interrupt_delay + max_clock_length) + 1) succ in
+  let states = List.init (1 + interrupt_delay + max_clock_length + 1) succ in
   let delta_transitions =
     let idle_state = 1 in
     let interrupt_state = interrupt_delay in
     states
     |> List.map (fun i ->
-      let next = i + 1 in
-      if i == idle_state then
-        {
-          main_transition = EpsilonTransition 1;
-          read_transition = None;
-          write_transitions = [(on_demand_interrupt_clock_io_device_special_input_value, 2)]
-        }
-      else if 2 <= i && i <= interrupt_state then
-        {
-          main_transition = if i == interrupt_state then InterruptTransition next else EpsilonTransition next;
-          read_transition = None;
-          write_transitions = []
-        }
-      else
-        {
-          main_transition = EpsilonTransition next;
-          read_transition = Some (Word.from_int (i - interrupt_state), next);
-          write_transitions = [(on_demand_interrupt_clock_io_device_special_input_value, idle_state)]
-        }) in
-  {
-    states;
-    init_state = 1;
-    delta = List.combine states delta_transitions
-  }
+           let next = i + 1 in
+           if i == idle_state then
+             {
+               main_transition = EpsilonTransition 1;
+               read_transition = None;
+               write_transitions =
+                 [
+                   (on_demand_interrupt_clock_io_device_special_input_value, 2);
+                 ];
+             }
+           else if 2 <= i && i <= interrupt_state then
+             {
+               main_transition =
+                 (if i == interrupt_state then InterruptTransition next
+                 else EpsilonTransition next);
+               read_transition = None;
+               write_transitions = [];
+             }
+           else
+             {
+               main_transition = EpsilonTransition next;
+               read_transition = Some (Word.from_int (i - interrupt_state), next);
+               write_transitions =
+                 [
+                   ( on_demand_interrupt_clock_io_device_special_input_value,
+                     idle_state );
+                 ];
+             })
+  in
+  { states; init_state = 1; delta = List.combine states delta_transitions }

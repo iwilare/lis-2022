@@ -22,9 +22,7 @@ let mac enc f right t = List.mem right (permissions enc f t)
 let rec mac_region enc f right t bytes =
   match bytes with
   | 0 -> true
-  | _ ->
-      mac enc f right t
-      && mac_region enc f right (Word.inc t) (bytes - 1)
+  | _ -> mac enc f right t && mac_region enc f right (Word.inc t) (bytes - 1)
 
 let mac_word enc f right w = mac_region enc f right w 2
 

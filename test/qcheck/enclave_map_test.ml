@@ -24,6 +24,8 @@ let attacker_io_device =
   let max_post_interrupt_clock_length = max_cycles + 20 in
   on_demand_interrupt_clock_io_device interrupt_delay max_post_interrupt_clock_length
 
+let iteration = 1000
+
 let test_no_pad_enclave_map_build_config enclave base_c =
   let attacker_out_address_in_memory = Word.(base_c.layout.attacker_range.range_end - from_int 1) in
   let attacker_program = [
@@ -91,5 +93,5 @@ let test_no_pad_enclave_map name ~count =
 let tests =
   [
      test_no_pad_enclave_map "Sancus no_pad allows attackers to fully map instructions timings of the enclave"
-     ~count:3000
+     ~count:iteration
   ]

@@ -21,22 +21,22 @@ type register =
   | R15
 
 let string_of_register = function
-| PC -> "PC"
-| SP -> "SP"
-| SR -> "SR"
-| R3 -> "R3"
-| R4 -> "R4"
-| R5 -> "R5"
-| R6 -> "R6"
-| R7 -> "R7"
-| R8 -> "R8"
-| R9 -> "R9"
-| R10 -> "R10"
-| R11 -> "R11"
-| R12 -> "R12"
-| R13 -> "R13"
-| R14 -> "R14"
-| R15 -> "R15"
+  | PC -> "PC"
+  | SP -> "SP"
+  | SR -> "SR"
+  | R3 -> "R3"
+  | R4 -> "R4"
+  | R5 -> "R5"
+  | R6 -> "R6"
+  | R7 -> "R7"
+  | R8 -> "R8"
+  | R9 -> "R9"
+  | R10 -> "R10"
+  | R11 -> "R11"
+  | R12 -> "R12"
+  | R13 -> "R13"
+  | R14 -> "R14"
+  | R15 -> "R15"
 
 type register_file = {
   pc : word;
@@ -58,20 +58,16 @@ type register_file = {
 }
 
 let string_of_register_file_gp r =
-  "[R3: " ^ Word.show r.r3 ^ "] " ^
-  "[R4: " ^ Word.show r.r4 ^ "] " ^
-  "[R5: " ^ Word.show r.r5 ^ "] " ^
-  "[R6: " ^ Word.show r.r6 ^ "] " ^
-  "[R7: " ^ Word.show r.r7 ^ "] " ^
-  "[R8: " ^ Word.show r.r8 ^ "] " ^
-  "[R9: " ^ Word.show r.r9 ^ "] " ^
-  "[R10: " ^ Word.show r.r10 ^ "] " ^
+  "[R3: " ^ Word.show r.r3 ^ "] " ^ "[R4: " ^ Word.show r.r4 ^ "] " ^ "[R5: "
+  ^ Word.show r.r5 ^ "] " ^ "[R6: " ^ Word.show r.r6 ^ "] " ^ "[R7: "
+  ^ Word.show r.r7 ^ "] " ^ "[R8: " ^ Word.show r.r8 ^ "] " ^ "[R9: "
+  ^ Word.show r.r9 ^ "] " ^ "[R10: " ^ Word.show r.r10 ^ "] "
   (* "[R11: " ^ Word.show r.r11 ^ "] " ^ *)
   (* "[R12: " ^ Word.show r.r12 ^ "] " ^ *)
   (* "[R13: " ^ Word.show r.r13 ^ "] " ^ *)
   (* "[R14: " ^ Word.show r.r14 ^ "] " ^ *)
-  " ... " ^
-  "[R15: " ^ Word.show r.r15 ^ "]"
+  ^ " ... "
+  ^ "[R15: " ^ Word.show r.r15 ^ "]"
 
 let register_get reg r =
   match reg with
@@ -119,27 +115,27 @@ let string_of_sr_flags sr =
 
 let register_set layout reg w r =
   match reg with
-  | PC -> {r with pc = align_even w }
-  | SP -> {r with sp = align_even w }
+  | PC -> { r with pc = align_even w }
+  | SP -> { r with sp = align_even w }
   | SR -> (
       match cpu_mode_of_address layout r.pc with
-      | Some PM -> {r with sr = w |> set_bit mask_gie (get_bit mask_gie r.sr) }
+      | Some PM -> { r with sr = w |> set_bit mask_gie (get_bit mask_gie r.sr) }
       | _ ->
           (* Remember Some(UM) *)
-          {r with sr = w})
-  | R3 -> {r with r3 = w}
-  | R4 -> {r with r4 = w}
-  | R5 -> {r with r5 = w}
-  | R6 -> {r with r6 = w}
-  | R7 -> {r with r7 = w}
-  | R8 -> {r with r8 = w}
-  | R9 -> {r with r9 = w}
-  | R10 -> {r with r10 = w}
-  | R11 -> {r with r11 = w}
-  | R12 -> {r with r12 = w}
-  | R13 -> {r with r13 = w}
-  | R14 -> {r with r14 = w}
-  | R15 -> {r with r15 = w}
+          { r with sr = w })
+  | R3 -> { r with r3 = w }
+  | R4 -> { r with r4 = w }
+  | R5 -> { r with r5 = w }
+  | R6 -> { r with r6 = w }
+  | R7 -> { r with r7 = w }
+  | R8 -> { r with r8 = w }
+  | R9 -> { r with r9 = w }
+  | R10 -> { r with r10 = w }
+  | R11 -> { r with r11 = w }
+  | R12 -> { r with r12 = w }
+  | R13 -> { r with r13 = w }
+  | R14 -> { r with r14 = w }
+  | R15 -> { r with r15 = w }
 
 let register_file_0 =
   Word.

@@ -86,12 +86,14 @@ module Non_interference (I : Interrupt_logic) = struct
   gen property
 end
 
+let iteration = 1000
+
 let tests =
   [
     (* Tests must ALWAYS check *)
     (let open Non_interference(Sancus_high) in
      test_non_interference "Sancus high ALWAYS preserves the enclave abstraction"
-       ~count:30000
+       ~count:iteration
        ~n_cycles:4
        ~io_device_states:25
        ~halt_reason:      HaltUM
@@ -101,7 +103,7 @@ let tests =
     (* Tests must ALWAYS check *)
     (let open Non_interference(Sancus_low) in
      test_non_interference "Sancus low ALWAYS preserves the enclave abstraction"
-       ~count:30000
+       ~count:iteration
        ~n_cycles:4
        ~io_device_states:25
        ~halt_reason:      HaltUM
@@ -111,7 +113,7 @@ let tests =
     (* Tests must ALWAYS check *)
     (let open Non_interference(Sancus_pre_pad) in
     test_non_interference "Sancus pre_pad with standard NI attack ALWAYS preserves the enclave abstraction "
-      ~count:30000
+      ~count:iteration
       ~n_cycles:4
       ~io_device_states:25
       ~halt_reason:      HaltUM
@@ -121,7 +123,7 @@ let tests =
     (* Tests should SOMETIMES not check *)
     (let open Non_interference(Sancus_no_pad) in
      test_non_interference "Sancus no_pad SOMETIMES preserves the enclave abstraction"
-       ~count:30000
+       ~count:iteration
        ~n_cycles:4
        ~io_device_states:25
        ~halt_reason:      HaltUM
@@ -131,7 +133,7 @@ let tests =
     (* Tests should SOMETIMES not check *)
     (let open Non_interference(Sancus_pre_pad) in
      test_non_interference "Sancus pre_pad with resume to end attack SOMETIMES preserves the enclave abstraction"
-       ~count:30000
+       ~count:iteration
        ~n_cycles:4
        ~io_device_states:40
        ~halt_reason:      HaltUM

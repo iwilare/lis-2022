@@ -10,6 +10,4 @@ let cpu_mode_of_address enc pc =
   | EnclaveData -> None
   | Unprotected -> Some UM
 
-let string_of_cpu_mode = function
-  | PM -> "***PM***"
-  | UM -> "UM"
+let string_of_cpu_mode = function PM -> "***PM***" | UM -> "UM"

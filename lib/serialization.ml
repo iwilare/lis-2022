@@ -64,24 +64,27 @@ let opcode = function
   | CMP (_, _) -> Word.from_int 0X9000
 
 let identify code =
-  let pick (mask, opcode, ist) = if Word.(code land mask = opcode) then Some(ist) else None in
+  let pick (mask, opcode, ist) =
+    if Word.(code land mask = opcode) then Some ist else None
+  in
   List.find_map pick
-    [ Word.from_int 0xFFF0, Word.from_int 0x1300, RETI
-    ; Word.from_int 0xFFF0, Word.from_int 0x1340, NOP
-    ; Word.from_int 0xFFF0, Word.from_int 0x1380, HLT
-    ; Word.from_int 0xFF00, Word.from_int 0x1400, IN R3
-    ; Word.from_int 0xFF00, Word.from_int 0x1800, OUT R3
-    ; Word.from_int 0xFF00, Word.from_int 0x3C00, JMP R3
-    ; Word.from_int 0xFF00, Word.from_int 0x2400, JZ R3
-    ; Word.from_int 0xF000, Word.from_int 0xF000, AND (R3,R3)
-    ; Word.from_int 0xF000, Word.from_int 0x6000, ADD (R3,R3)
-    ; Word.from_int 0xF000, Word.from_int 0x7000, SUB (R3,R3)
-    ; Word.from_int 0xF000, Word.from_int 0x9000, CMP (R3,R3)
-    ; Word.from_int 0xF0F0, Word.from_int 0x4000, MOV (R3,R3)
-    ; Word.from_int 0xF0F0, Word.from_int 0x4020, MOV_LOAD (R3,R3)
-    ; Word.from_int 0xF0F0, Word.from_int 0x4090, MOV_STORE (R3,R3)
-    ; Word.from_int 0xF0F0, Word.from_int 0xE030, NOT R3
-    ; Word.from_int 0xF0F0, Word.from_int 0x4030, MOV_IMM (Word.zero,R3)
+    [
+      (Word.from_int 0xFFF0, Word.from_int 0x1300, RETI);
+      (Word.from_int 0xFFF0, Word.from_int 0x1340, NOP);
+      (Word.from_int 0xFFF0, Word.from_int 0x1380, HLT);
+      (Word.from_int 0xFF00, Word.from_int 0x1400, IN R3);
+      (Word.from_int 0xFF00, Word.from_int 0x1800, OUT R3);
+      (Word.from_int 0xFF00, Word.from_int 0x3C00, JMP R3);
+      (Word.from_int 0xFF00, Word.from_int 0x2400, JZ R3);
+      (Word.from_int 0xF000, Word.from_int 0xF000, AND (R3, R3));
+      (Word.from_int 0xF000, Word.from_int 0x6000, ADD (R3, R3));
+      (Word.from_int 0xF000, Word.from_int 0x7000, SUB (R3, R3));
+      (Word.from_int 0xF000, Word.from_int 0x9000, CMP (R3, R3));
+      (Word.from_int 0xF0F0, Word.from_int 0x4000, MOV (R3, R3));
+      (Word.from_int 0xF0F0, Word.from_int 0x4020, MOV_LOAD (R3, R3));
+      (Word.from_int 0xF0F0, Word.from_int 0x4090, MOV_STORE (R3, R3));
+      (Word.from_int 0xF0F0, Word.from_int 0xE030, NOT R3);
+      (Word.from_int 0xF0F0, Word.from_int 0x4030, MOV_IMM (Word.zero, R3));
     ]
 
 let encode (i : instr) =
@@ -91,54 +94,62 @@ let encode (i : instr) =
     Word.(opcode i lor reg_encode_shift r1 lor reg_encode r2)
   in
   match i with
-  | NOP
-  | RETI
-  | HLT -> [opcode i]
-  | IN r
-  | OUT r
-  | JMP r
-  | JZ r -> [encode1 i r]
+  | NOP | RETI | HLT -> [ opcode i ]
+  | IN r | OUT r | JMP r | JZ r -> [ encode1 i r ]
   | MOV (r1, r2)
   | MOV_LOAD (r1, r2)
   | ADD (r1, r2)
   | SUB (r1, r2)
   | AND (r1, r2)
-  | CMP (r1, r2) -> [encode2 i r1 r2]
-  | MOV_STORE (r1, r2) -> [encode2 i r1 r2; Word.zero]
-  | MOV_IMM (v, r) -> [encode1 i r; v]
-  | NOT r -> [encode1 i r; w0xFFFF]
+  | CMP (r1, r2) ->
+      [ encode2 i r1 r2 ]
+  | MOV_STORE (r1, r2) -> [ encode2 i r1 r2; Word.zero ]
+  | MOV_IMM (v, r) -> [ encode1 i r; v ]
+  | NOT r -> [ encode1 i r; w0xFFFF ]
 
 let decode (v : word list) =
   let get_reg w = Word.(w land from_int 0x000F |> reg_decode |> Option.get) in
-  let get_s_reg w = Word.((w land from_int 0x0F00) lsr 8 |> reg_decode |> Option.get)
+  let get_s_reg w =
+    Word.((w land from_int 0x0F00) lsr 8 |> reg_decode |> Option.get)
   in
   match v with
-  | [w1] when identify w1 = Some RETI -> Some RETI
-  | [w1] when identify w1 = Some NOP -> Some NOP
-  | [w1] when identify w1 = Some HLT -> Some HLT
-  | [w1] when identify w1 = Some(IN(R3)) -> Some(IN(get_reg w1))
-  | [w1] when identify w1 = Some(OUT(R3)) -> Some(OUT(get_reg w1))
-  | [w1] when identify w1 = Some(JMP(R3)) -> Some(JMP(get_reg w1))
-  | [w1] when identify w1 = Some(JZ(R3)) -> Some(JZ(get_reg w1))
-  | [w1] when identify w1 = Some(AND(R3,R3)) -> Some(AND(get_s_reg w1, get_reg w1))
-  | [w1] when identify w1 = Some(ADD(R3,R3)) -> Some(ADD(get_s_reg w1, get_reg w1))
-  | [w1] when identify w1 = Some(SUB(R3,R3)) -> Some(SUB(get_s_reg w1, get_reg w1))
-  | [w1] when identify w1 = Some(CMP(R3,R3)) -> Some(CMP(get_s_reg w1, get_reg w1))
-  | [w1] when identify w1 = Some(MOV(R3,R3)) -> Some(MOV(get_s_reg w1, get_reg w1))
-  | [w1] when identify w1 = Some(MOV_LOAD(R3,R3)) -> Some(MOV_LOAD(get_s_reg w1, get_reg w1))
-  | [w1;_] when identify w1 = Some(MOV_STORE(R3,R3)) -> Some(MOV_STORE(get_s_reg w1, get_reg w1))
-  | [w1;_] when identify w1 = Some(NOT(R3)) -> Some(NOT(get_reg w1))
-  | [w1;w2] when identify w1 = Some(MOV_IMM(Word.zero,R3)) -> Some(MOV_IMM (w2, get_reg w1))
+  | [ w1 ] when identify w1 = Some RETI -> Some RETI
+  | [ w1 ] when identify w1 = Some NOP -> Some NOP
+  | [ w1 ] when identify w1 = Some HLT -> Some HLT
+  | [ w1 ] when identify w1 = Some (IN R3) -> Some (IN (get_reg w1))
+  | [ w1 ] when identify w1 = Some (OUT R3) -> Some (OUT (get_reg w1))
+  | [ w1 ] when identify w1 = Some (JMP R3) -> Some (JMP (get_reg w1))
+  | [ w1 ] when identify w1 = Some (JZ R3) -> Some (JZ (get_reg w1))
+  | [ w1 ] when identify w1 = Some (AND (R3, R3)) ->
+      Some (AND (get_s_reg w1, get_reg w1))
+  | [ w1 ] when identify w1 = Some (ADD (R3, R3)) ->
+      Some (ADD (get_s_reg w1, get_reg w1))
+  | [ w1 ] when identify w1 = Some (SUB (R3, R3)) ->
+      Some (SUB (get_s_reg w1, get_reg w1))
+  | [ w1 ] when identify w1 = Some (CMP (R3, R3)) ->
+      Some (CMP (get_s_reg w1, get_reg w1))
+  | [ w1 ] when identify w1 = Some (MOV (R3, R3)) ->
+      Some (MOV (get_s_reg w1, get_reg w1))
+  | [ w1 ] when identify w1 = Some (MOV_LOAD (R3, R3)) ->
+      Some (MOV_LOAD (get_s_reg w1, get_reg w1))
+  | [ w1; _ ] when identify w1 = Some (MOV_STORE (R3, R3)) ->
+      Some (MOV_STORE (get_s_reg w1, get_reg w1))
+  | [ w1; _ ] when identify w1 = Some (NOT R3) -> Some (NOT (get_reg w1))
+  | [ w1; w2 ] when identify w1 = Some (MOV_IMM (Word.zero, R3)) ->
+      Some (MOV_IMM (w2, get_reg w1))
   | _ -> None
 
 let encode_and_put addr i = memory_set_words addr (encode i)
 
 let fetch_and_decode addr m =
-  Option.bind (identify (memory_get addr m))
-    (fun prototype ->
-      decode (memory_get_words addr (size prototype asr 1) m))
+  Option.bind
+    (identify (memory_get addr m))
+    (fun prototype -> decode (memory_get_words addr (size prototype asr 1) m))
 
 let rec encode_and_put_program addr is m =
   match is with
   | [] -> m
-  | i :: is -> encode_and_put_program Word.(addr + from_int (size i)) is (encode_and_put addr i m)
+  | i :: is ->
+      encode_and_put_program
+        Word.(addr + from_int (size i))
+        is (encode_and_put addr i m)

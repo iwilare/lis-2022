@@ -27,8 +27,7 @@ let size = function
   | _ -> 2
 
 let max_instruction_size = 4
-
-let program_size xs = List.fold_left (+) 0 (List.map size xs)
+let program_size xs = List.fold_left ( + ) 0 (List.map size xs)
 
 let cycles = function
   | RETI -> 5
@@ -60,25 +59,28 @@ let is_simple_instr = function
   | ADD (_, _)
   | SUB (_, _)
   | AND (_, _)
-  | CMP (_, _) -> true
+  | CMP (_, _) ->
+      true
   | _ -> false
 
 let max_cycles = 6
 
 let string_of_instr = function
-| NOP -> "NOP"
-| RETI -> "RETI"
-| HLT -> "HLT"
-| IN r -> "IN " ^ string_of_register r
-| OUT r -> "OUT " ^ string_of_register r
-| JMP r -> "JMP " ^ string_of_register r
-| JZ r -> "JZ " ^ string_of_register r
-| MOV (r1, r2) -> "MOV " ^ string_of_register r1 ^ " " ^ string_of_register r2
-| MOV_LOAD (r1, r2) -> "MOV_LOAD " ^ string_of_register r1 ^ " " ^ string_of_register r2
-| MOV_STORE (r1, r2) -> "MOV_STORE " ^ string_of_register r1 ^ " " ^ string_of_register r2
-| MOV_IMM (imm, r) -> "MOV_IMM " ^ Word.show imm ^ " " ^ string_of_register r
-| NOT r -> "NOT " ^ string_of_register r
-| ADD (r1, r2) -> "ADD " ^ string_of_register r1 ^ " " ^ string_of_register r2
-| SUB (r1, r2) -> "SUB " ^ string_of_register r1 ^ " " ^ string_of_register r2
-| AND (r1, r2) -> "AND " ^ string_of_register r1 ^ " " ^ string_of_register r2
-| CMP (r1, r2) -> "CMP " ^ string_of_register r1 ^ " " ^ string_of_register r2
+  | NOP -> "NOP"
+  | RETI -> "RETI"
+  | HLT -> "HLT"
+  | IN r -> "IN " ^ string_of_register r
+  | OUT r -> "OUT " ^ string_of_register r
+  | JMP r -> "JMP " ^ string_of_register r
+  | JZ r -> "JZ " ^ string_of_register r
+  | MOV (r1, r2) -> "MOV " ^ string_of_register r1 ^ " " ^ string_of_register r2
+  | MOV_LOAD (r1, r2) ->
+      "MOV_LOAD " ^ string_of_register r1 ^ " " ^ string_of_register r2
+  | MOV_STORE (r1, r2) ->
+      "MOV_STORE " ^ string_of_register r1 ^ " " ^ string_of_register r2
+  | MOV_IMM (imm, r) -> "MOV_IMM " ^ Word.show imm ^ " " ^ string_of_register r
+  | NOT r -> "NOT " ^ string_of_register r
+  | ADD (r1, r2) -> "ADD " ^ string_of_register r1 ^ " " ^ string_of_register r2
+  | SUB (r1, r2) -> "SUB " ^ string_of_register r1 ^ " " ^ string_of_register r2
+  | AND (r1, r2) -> "AND " ^ string_of_register r1 ^ " " ^ string_of_register r2
+  | CMP (r1, r2) -> "CMP " ^ string_of_register r1 ^ " " ^ string_of_register r2

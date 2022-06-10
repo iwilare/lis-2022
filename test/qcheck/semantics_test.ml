@@ -200,6 +200,8 @@ let test_jz_um z_case =
     ~count:20000 gen property
     ~print:(fun (c, r, _) -> printer_step (JZ r) c)
 
+let iteration = 20000
+
 let test_in_device =
   let property (c, r) =
     let i = IN r in
@@ -218,7 +220,7 @@ let test_in_device =
     QCheck2.Gen.(let* io_device = Io_device.device 5 5 in
                  pair (Config.any_config_unprotected_no_mem () ~io_device) Register.gp_register)
   in
-  QCheck2.Test.make ~name:"IN performs a read from the device" ~count:100000 gen property
+  QCheck2.Test.make ~name:"IN performs a read from the device" ~count:iteration gen property
 
 let test_out_device =
   let property (c, r, word_to_write) =
@@ -241,7 +243,7 @@ let test_out_device =
                  let word_to_write = 0 -- 16 >|= Word.from_int in
                  triple (Config.any_config_unprotected_no_mem () ~io_device) Register.gp_register word_to_write)
   in
-  QCheck2.Test.make ~name:"OUT performs a read from the device" ~count:100000 gen property
+  QCheck2.Test.make ~name:"OUT performs a read from the device" ~count:iteration gen property
 
 let tests =
   [

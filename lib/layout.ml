@@ -12,8 +12,12 @@ type memory_layout = {
 }
 
 let string_of_layout l =
-  "data: " ^ string_of_range l.enclave_data ^ " code: " ^ string_of_range l.enclave_code
-  ^ " isr: " ^ Word.show_address l.isr_range.range_start
+  "data: "
+  ^ string_of_range l.enclave_data
+  ^ " code: "
+  ^ string_of_range l.enclave_code
+  ^ " isr: "
+  ^ Word.show_address l.isr_range.range_start
 
 (* Memory type *)
 
@@ -23,7 +27,6 @@ type memory_type =
   | Unprotected
 
 let is_enclave_code layout = is_in_range layout.enclave_code
-
 let is_enclave_data layout = is_in_range layout.enclave_data
 
 (*
@@ -32,7 +35,7 @@ let is_enclave_data layout = is_in_range layout.enclave_data
   bytes of the instruction must be marked as executable.
 *)
 let is_enclave_entry_point layout addr =
-     addr = layout.enclave_code.range_start
+  addr = layout.enclave_code.range_start
   || addr = Word.inc layout.enclave_code.range_start
 
 let get_memory_type enc addr =
