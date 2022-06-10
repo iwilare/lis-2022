@@ -86,6 +86,9 @@ module Non_interference (I : Interrupt_logic) = struct
   gen property
 end
 
+(* Clear all registers *)
+let clear_all = List.map (fun r -> MOV_IMM(Word.from_int 0, r)) all_gp_registers
+
 let tests =
   [
     (* Tests must ALWAYS check *)
@@ -93,11 +96,14 @@ let tests =
      test_non_interference "Sancus high ALWAYS preserves the enclave abstraction"
        ~count:30000
        ~n_cycles:4
-       ~io_device_states:25
+       ~io_device_states:50 (* Add more states, since ISR goes back to the *)
        ~halt_reason:      HaltUM
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
-       ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
+       ~enclave_epilogue: (fun c -> clear_all @ [MOV_IMM(isr c,R3);JMP R3]));
+        (* The ISR is never reached through interrupts.
+           The enclave gives back control at its end, before clearing out all registers.
+        *)
     (* Tests must ALWAYS check *)
     (let open Non_interference(Sancus_low) in
      test_non_interference "Sancus low ALWAYS preserves the enclave abstraction"
@@ -107,7 +113,7 @@ let tests =
        ~halt_reason:      HaltUM
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
-       ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
+       ~enclave_epilogue: (fun c -> clear_all @ [MOV_IMM(isr c,R3);JMP R3]));
     (* Tests must ALWAYS check *)
     (let open Non_interference(Sancus_pre_pad) in
     test_non_interference "Sancus pre_pad with standard NI attack ALWAYS preserves the enclave abstraction "
@@ -117,7 +123,7 @@ let tests =
       ~halt_reason:      HaltUM
       ~isr_program:      (fun _ -> [IN(R3); HLT])
       ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
-      ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
+      ~enclave_epilogue: (fun c -> clear_all @ [MOV_IMM(isr c,R3);JMP R3]));
     (* Tests should SOMETIMES not check *)
     (let open Non_interference(Sancus_no_pad) in
      test_non_interference "Sancus no_pad SOMETIMES preserves the enclave abstraction"
@@ -127,15 +133,15 @@ let tests =
        ~halt_reason:      HaltUM
        ~isr_program:      (fun _ -> [IN(R3); HLT])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)])
-       ~enclave_epilogue: (fun c -> [MOV_IMM(isr c,R3);JMP R3]));
+       ~enclave_epilogue: (fun c -> clear_all @ [MOV_IMM(isr c,R3);JMP R3]));
     (* Tests should SOMETIMES not check *)
     (let open Non_interference(Sancus_pre_pad) in
      test_non_interference "Sancus pre_pad with resume to end attack SOMETIMES preserves the enclave abstraction"
        ~count:30000
        ~n_cycles:4
-       ~io_device_states:40
+       ~io_device_states:70
        ~halt_reason:      HaltUM
        ~isr_program:      (fun _ -> [RETI])
        ~attacker_program: (fun c -> [MOV_IMM(enclave_start c,R3); JMP(R3)] @ [IN(R3); HLT])
-       ~enclave_epilogue: (fun c -> [MOV_IMM(Lis2022.Types.Word.(attacker c + from_int 6),R4);JMP R4]));
+       ~enclave_epilogue: (fun c -> clear_all @ [MOV_IMM(Lis2022.Types.Word.(attacker c + from_int 6),R4);JMP R4]));
   ]
